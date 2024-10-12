@@ -3,22 +3,43 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "ts-node --project tsconfig.json server.ts",
     "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
+    "start": "NODE_ENV=production ts-node --project tsconfig.server.json server.ts",
+    "init-db": "npx ts-node --esm ./src/scripts/init.ts"
   },
   "dependencies": {
+    "@types/formidable": "^3.4.5",
+    "@types/markdown-it": "^14.1.2",
+    "bcryptjs": "^2.4.3",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.1",
+    "formidable": "^3.5.1",
+    "highlight.js": "^11.10.0",
+    "jsonwebtoken": "^9.0.2",
+    "markdown-it": "^14.1.0",
+    "next": "14.2.15",
+    "next-auth": "^4.24.8",
     "react": "^18",
     "react-dom": "^18",
-    "next": "14.2.15"
+    "react-icons": "^5.3.0",
+    "react-image-crop": "^11.0.7",
+    "react-markdown-editor-lite": "^1.3.4",
+    "react-select": "^5.8.1",
+    "reflect-metadata": "^0.2.2",
+    "sqlite3": "^5.1.7",
+    "typeorm": "^0.3.20",
+    "webpack": "^5.95.0"
   },
   "devDependencies": {
-    "typescript": "^5",
-    "@types/node": "^20",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/jsonwebtoken": "^9.0.7",
+    "@types/node": "^20.16.11",
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "eslint": "^8",
-    "eslint-config-next": "14.2.15"
+    "eslint-config-next": "14.2.15",
+    "ts-node": "^10.9.2",
+    "typescript": "^5"
   }
 }
