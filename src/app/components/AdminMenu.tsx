@@ -16,6 +16,7 @@ import {
 } from "react-icons/fi";
 import { IconType } from "react-icons";
 import styles from "../styles/AdminMenu.module.css";
+import cx from "classnames";
 
 interface MenuItem {
   href: string;
@@ -46,9 +47,17 @@ const AdminMenu: React.FC<AdminMenuProps> = () => {
 
   return (
     <>
-      <nav className={`admin-nav ${styles.adminNav} ${isOpen ? "open" : ""}`}>
+      <nav
+        className={cx("admin-nav", styles.adminNav, {
+          open: isOpen,
+        })}
+      >
         <button onClick={() => setIsOpen(!isOpen)} className={"toggle-button"}>
-          <FiChevronRight className={isOpen ? styles.rotateIcon : ""} />
+          <FiChevronRight
+            className={cx({
+              [styles.rotateIcon]: isOpen,
+            })}
+          />
         </button>
         <ul className={styles.menuList}>
           {menuItems.map((item) => (

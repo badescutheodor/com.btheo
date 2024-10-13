@@ -1,4 +1,5 @@
 import "normalize.css";
+import "@/app/styles/theme.css";
 import "@/app/styles/global.css";
 import Layout from "@/app/components/Layout";
 import { getCurrentUser, getSettings } from "@/lib/utils";
@@ -36,7 +37,7 @@ export default async function RootLayout({
           <ThemeProvider>
             <Layout initialUser={user} initialSettings={settings}>
               <BackgroundTransition />
-              <main>{children}</main>
+              {children}
             </Layout>
           </ThemeProvider>
         </SettingsProvider>

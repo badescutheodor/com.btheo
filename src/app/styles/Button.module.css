@@ -1,0 +1,284 @@
+.button {
+  font-size: var(--btn-font-size);
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s, color 0.2s, opacity 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  text-decoration: none;
+  position: relative;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.button:hover,
+.button:active,
+.button:visited,
+.button:focus {
+  text-decoration: none !important;
+}
+
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.button:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(var(--btn-bg), 0.5);
+}
+
+.small {
+  padding: var(--spacing-xs) var(--spacing-sm);
+}
+
+.medium {
+  padding: var(--spacing-sm) var(--spacing-md);
+}
+
+.large {
+  padding: var(--spacing-md) var(--spacing-lg);
+}
+
+.fullWidth {
+  width: 100%;
+}
+
+.default {
+  background-color: var(--bg-darker);
+  color: var(--text);
+}
+
+.default:hover:not(:disabled),
+.default:focus:not(:disabled),
+.default:active:not(:disabled),
+.default:visited:not(:disabled) {
+  background-color: var(--bg-darkest);
+  color: var(--text);
+}
+
+.primary {
+  background-color: var(--btn-bg);
+  color: var(--btn-text);
+}
+
+.primary:hover:not(:disabled),
+.primary:focus:not(:disabled),
+.primary:active:not(:disabled),
+.primary:visited:not(:disabled) {
+  background-color: var(--btn-bg-hover);
+  color: var(--btn-text);
+}
+
+.success {
+  background-color: var(--success-bg);
+  color: var(--success-text);
+}
+
+.success:hover:not(:disabled),
+.success:focus:not(:disabled),
+.success:active:not(:disabled),
+.success:visited:not(:disabled) {
+  background-color: var(--success-hover);
+}
+
+.warning {
+  background-color: var(--warning-bg);
+  color: var(--warning-text);
+}
+
+.warning:hover:not(:disabled),
+.warning:focus:not(:disabled),
+.warning:active:not(:disabled),
+.warning:visited:not(:disabled) {
+  background-color: var(--warning-hover);
+}
+
+.error {
+  background-color: var(--error-bg);
+  color: var(--error-text);
+}
+
+.error:hover:not(:disabled),
+.error:focus:not(:disabled),
+.error:active:not(:disabled),
+.error:visited:not(:disabled) {
+  background-color: var(--error-hover);
+}
+
+.inverted.default {
+  background-color: transparent;
+  color: var(--text);
+  border: 1px solid var(--text);
+}
+
+.inverted.default:hover:not(:disabled),
+.inverted.default:focus:not(:disabled),
+.inverted.default:active:not(:disabled),
+.inverted.default:visited:not(:disabled) {
+  background-color: var(--text-darker);
+  color: var(--bg);
+}
+
+.inverted.primary {
+  background-color: transparent;
+  color: var(--btn-text);
+  border: 1px solid var(--btn-text);
+}
+
+.inverted.primary:hover:not(:disabled),
+.inverted.primary:focus:not(:disabled),
+.inverted.primary:active:not(:disabled),
+.inverted.primary:visited:not(:disabled) {
+  background-color: var(--btn-text);
+  color: var(--btn-bg);
+}
+
+.inverted.success {
+  background-color: transparent;
+  color: var(--success-text);
+  border: 1px solid var(--success-text);
+}
+
+.inverted.warning {
+  background-color: transparent;
+  color: var(--warning-text);
+  border: 1px solid var(--warning-text);
+}
+
+.inverted.error {
+  background-color: transparent;
+  color: var(--error-text);
+  border: 1px solid var(--error-text);
+}
+
+.loading {
+  position: relative;
+  color: transparent !important;
+}
+
+.loading::after {
+  content: "";
+  position: absolute;
+  width: 1em;
+  height: 1em;
+  border: 2px solid;
+  border-radius: 50%;
+  border-color: currentColor currentColor currentColor transparent;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.content {
+  display: inline-block;
+}
+
+/* Mask animation styles */
+.button__mask {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--gray-200);
+  transition: 0.5s;
+}
+
+.button:hover .button__mask {
+  z-index: 6;
+}
+
+.iconMargin {
+  margin-right: 10px;
+}
+
+.button__text {
+  position: relative;
+  display: flex;
+  align-items: center;
+  z-index: 1;
+  transition: 0.5s;
+}
+
+.button .button__mask + .button__text {
+  color: var(--text);
+}
+
+.button--mask-1 .button__mask {
+  -webkit-mask: url("/assets/nature-sprite.png");
+  mask: url("/assets/nature-sprite.png");
+  -webkit-mask-size: 2300% 100%;
+  mask-size: 2300% 100%;
+}
+
+.button--mask-2 .button__mask {
+  -webkit-mask: url("/assets/urban-sprite.png");
+  mask: url("/assets/urban-sprite.png");
+  -webkit-mask-size: 3000% 100%;
+  mask-size: 3000% 100%;
+}
+
+.button--mask-3 .button__mask {
+  -webkit-mask: url("/assets/nature-smaller.png");
+  mask: url("/assets/nature-smaller.png");
+  -webkit-mask-size: 7100% 100%;
+  mask-size: 7100% 100%;
+}
+
+/* Hover styles for masked buttons */
+.button--mask-1:hover .button__mask {
+  animation: mask-animation 0.7s steps(70) forwards;
+}
+
+.button--mask-2:hover .button__mask {
+  animation: mask-animation 0.7s steps(29) forwards;
+}
+
+.button--mask-3:hover .button__mask {
+  animation: mask-animation 0.7s steps(70) forwards;
+}
+
+@keyframes mask-animation {
+  from {
+    -webkit-mask-position: 0 0;
+    mask-position: 0 0;
+  }
+  to {
+    -webkit-mask-position: 100% 0;
+    mask-position: 100% 0;
+  }
+}
+
+/* Override hover styles for masked buttons */
+.button--mask-1:hover,
+.button--mask-2:hover,
+.button--mask-3:hover,
+.button--mask-1:focus,
+.button--mask-2:focus,
+.button--mask-3:focus,
+.button--mask-1:active,
+.button--mask-2:active,
+.button--mask-3:active,
+.button--mask-1:visited,
+.button--mask-2:visited,
+.button--mask-3:visited {
+  background-color: inherit;
+  color: inherit;
+}

@@ -4,6 +4,16 @@
   min-height: 100vh; /* This ensures the container is at least the full viewport height */
 }
 
+.pageContainer main {
+  margin-top: 60px;
+}
+
 .contentWrapper {
   flex: 1 0 auto; /* This allows the content to grow but not shrink */
+}
+
+@media screen and (max-width: 768px) {
+  .pageContainer main {
+    margin-top: 80px;
+  }
 }

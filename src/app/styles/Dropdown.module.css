@@ -6,7 +6,7 @@
 .dropdown a,
 .dropdown a:visited {
   text-decoration: none;
-  color: var(--text) !important;
+  color: var(--text-lighter) !important;
 }
 
 .dropdown a:hover {
@@ -55,7 +55,7 @@
 .dropdownItem {
   padding: var(--spacing-sm) var(--spacing-md);
   cursor: pointer;
-  color: var(--text-darker);
+  color: var(--text-lighter) !important;
 }
 
 .dropdownItem:hover {
@@ -70,7 +70,7 @@
 
 /* Dark theme styles */
 [data-theme="dark"] .dropdownMenu {
-  color: var(--text-darker);
+  color: var(--text-lighter);
 }
 
 [data-theme="dark"] .dropdownItem:hover {

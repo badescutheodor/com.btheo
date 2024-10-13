@@ -9,7 +9,7 @@ export default async function FeaturedPosts() {
     <div className={styles.featuredPosts}>
       <h3>Featured Posts</h3>
       <div>
-        {!featuredPosts.length && <p>No featured posts to show</p>}
+        {!featuredPosts.length && <p>No featured posts to display</p>}
         {featuredPosts.map((post) => (
           <Link href={`/blog/${post.slug}`} key={post.id}>
             <div>

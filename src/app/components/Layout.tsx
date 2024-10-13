@@ -31,7 +31,7 @@ export default function Layout({
         <AdminMenu />
         <div className={`${styles.pageContainer} page-content`}>
           <div className={styles.contentWrapper}>
-            <Header />
+            <Header settings={initialSettings} />
             <main className={styles.mainContent}>{children}</main>
           </div>
           <Footer settings={initialSettings} />

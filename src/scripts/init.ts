@@ -31,12 +31,13 @@ async function initDb() {
   // Create initial settings if not exist
   const initialSettings = [
     { key: "homeTitle", value: "Theodor Badescu" },
-    { key: "homeDescription", value: "Personal blog of Theodor Badescu" },
+    { key: "homeDescription", value: '🚀 Building Digital Solutions that Take Your Ideas to New Heights – Crafting Innovative, Custom Websites and Apps to Elevate Your Vision and Achieve Your Success' },
     { key: "homeImage", value: "/images/default-landing.jpg" },
     { key: "name", value: "Theodor Badescu" },
     { key: "githubLink", value: "https://github.com/bthe0" },
     { key: "linkedinLink", value: "https://www.linkedin.com/in/bthe0/" },
     { key: "twitterLink", value: "https://x.com/bthe0_" },
+    { key: "resumeLink", value: "/Theodor_Badescu_Resume.pdf" },
   ];
 
   for (const setting of initialSettings) {

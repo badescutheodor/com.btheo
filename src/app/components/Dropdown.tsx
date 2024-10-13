@@ -1,8 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { FiChevronDown, FiChevronUp } from "react-icons/fi";
 import styles from "@/app/styles/Dropdown.module.css";
 import Link from "next/link";
-import useOutsideClick from "@/hooks/useOutsideClick";
+import cx from "classnames";
 
 interface Option {
   value?: string;
@@ -26,8 +26,10 @@ const Dropdown: React.FC<DropdownProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedOption, setSelectedOption] = useState<Option | null>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const toggleDropdown = () => setIsOpen(!isOpen);
+  const handleMouseEnter = () => setIsOpen(true);
+  const handleMouseLeave = () => setIsOpen(false);
 
   const handleSelect = (option: Option) => {
     setSelectedOption(option);
@@ -35,17 +37,30 @@ const Dropdown: React.FC<DropdownProps> = ({
     onSelect(option);
   };
 
-  const handleOutsideClick = () => {
-    if (isOpen) {
-      setIsOpen(false);
-    }
-  };
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsOpen(false);
+      }
+    };
 
-  const dropdownRef = useOutsideClick(handleOutsideClick);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   return (
-    <div className={`${styles.dropdown} ${className}`} ref={dropdownRef}>
-      <div className={styles.dropdownToggle} onClick={toggleDropdown}>
+    <div
+      className={`${styles.dropdown} ${className}`}
+      ref={dropdownRef}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    >
+      <div className={styles.dropdownToggle}>
         <span>
           {children
             ? selectedOption
@@ -57,7 +72,11 @@ const Dropdown: React.FC<DropdownProps> = ({
         </span>
         {isOpen ? <FiChevronUp /> : <FiChevronDown />}
       </div>
-      <ul className={`${styles.dropdownMenu} ${isOpen ? styles.open : ""}`}>
+      <ul
+        className={cx(styles.dropdownMenu, {
+          [styles.open]: isOpen,
+        })}
+      >
         {options.map((option, index) => (
           <li
             key={index}

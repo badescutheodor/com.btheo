@@ -21,6 +21,10 @@ export default function Guestbook() {
   return (
     <div className="guestbook">
       <h3>Guestbook</h3>
+      <p>
+        I'd love to hear from you! Leave your thoughts, feedback, or just say
+        hello — let’s stay connected and keep the conversation going!
+      </p>
       <form onSubmit={handleSubmit}>
         <input
           type="text"

@@ -8,8 +8,15 @@ import ThemeToggle from "./ThemeToggle";
 import { FiMenu, FiX } from "react-icons/fi";
 import Dropdown from "./Dropdown";
 import styles from "../styles/Header.module.css";
+import Button from "./Button";
+import cx from "classnames";
+import { FiFileText } from "react-icons/fi";
 
-const Header: React.FC = () => {
+interface Settings {
+  [key: string]: any;
+}
+
+const Header: React.FC = ({ settings }: Settings) => {
   const { user, setUser } = useUser();
   const router = useRouter();
   const pathname = usePathname();
@@ -42,8 +49,8 @@ const Header: React.FC = () => {
   return (
     <header className={styles.header}>
       <nav>
-        <div className={styles.navContainer}>
-          <div ref={navLinksRef} className={styles.navLinks}>
+        <div ref={navLinksRef} className={styles.navContainer}>
+          <div className={styles.navLinks}>
             <Link href="/" className={isActive("/") ? styles.active : ""}>
               Home
             </Link>
@@ -65,6 +72,11 @@ const Header: React.FC = () => {
             >
               Snippets
             </Link>
+            <div className={cx("visible-sm", styles.resumeButton)}>
+              <Button inverted href={settings.resumeLink} icon={FiFileText}>
+                My Resume
+              </Button>
+            </div>
           </div>
         </div>
         <div className={styles.right}>
