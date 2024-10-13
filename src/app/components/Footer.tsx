@@ -1,9 +1,14 @@
 import Link from "next/link";
+import styles from "@/app/styles/Footer.module.css";
 
-const Footer: React.FC = () => {
+interface Settings {
+  [key: string]: any;
+}
+
+const Footer = async ({ settings }: Settings) => {
   return (
-    <footer className="footer">
-      <div className="footer-content">
+    <footer className={styles.footer}>
+      <div className={styles.links}>
         <div className="footer-section">
           <h4>Links</h4>
           <ul>
@@ -24,39 +29,46 @@ const Footer: React.FC = () => {
         <div className="footer-section">
           <h4>Connect</h4>
           <ul>
-            <li>
-              <a
-                href="https://twitter.com/leeerob"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Twitter
-              </a>
-            </li>
-            <li>
-              <a
-                href="https://github.com/leerob"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a
-                href="https://www.linkedin.com/in/leeerob"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                LinkedIn
-              </a>
-            </li>
+            {settings?.twitterLink && (
+              <li>
+                <a
+                  href={settings.twitterLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Twitter
+                </a>
+              </li>
+            )}
+            {settings?.githubLink && (
+              <li>
+                <a
+                  href={settings.githubLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  GitHub
+                </a>
+              </li>
+            )}
+            {settings?.linkedinLink && (
+              <li>
+                <a
+                  href={settings.linkedinLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  LinkedIn
+                </a>
+              </li>
+            )}
           </ul>
         </div>
       </div>
-      <div className="footer-bottom">
+      <div className={styles.bottomText}>
         <p>
-          &copy; {new Date().getFullYear()} Lee Robinson. All rights reserved.
+          &copy; {new Date().getFullYear()} Theodor Badescu. All rights
+          reserved.
         </p>
       </div>
     </footer>

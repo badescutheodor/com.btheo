@@ -1,3 +1,4 @@
 .themeToggle {
   cursor: pointer;
+  min-height: 24px;
 }

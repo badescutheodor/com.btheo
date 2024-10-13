@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getRepository } from 'typeorm';
 import { Setting } from '@/lib/entities/Setting';
 import { getSession } from '@/lib/auth';
 import { getDB } from '@/lib/db';
@@ -16,7 +15,7 @@ export async function GET(req: NextRequest) {
     try {
         const settingRepository = db.getRepository(Setting);
         const settings = await settingRepository.find();
-    return NextResponse.json(settings);
+        return NextResponse.json(settings);
     } catch (error) {
         return NextResponse.json({ message: 'Error fetching settings' }, { status: 500 });
     }

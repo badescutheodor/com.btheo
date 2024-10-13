@@ -6,6 +6,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { useUser } from "../contexts/UserContext";
 import ThemeToggle from "./ThemeToggle";
 import { FiMenu, FiX } from "react-icons/fi";
+import Dropdown from "./Dropdown";
 import styles from "../styles/Header.module.css";
 
 const Header: React.FC = () => {
@@ -14,16 +15,19 @@ const Header: React.FC = () => {
   const pathname = usePathname();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const navLinksRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    setIsMenuOpen(false);
-  }, [pathname]);
+  const menuIconRef = useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
     if (navLinksRef.current) {
       navLinksRef.current.classList.toggle(styles.open, isMenuOpen);
     }
+    if (menuIconRef.current) {
+      menuIconRef.current.classList.toggle(styles.open, isMenuOpen);
+    }
   }, [isMenuOpen]);
+  useEffect(() => {
+    setIsMenuOpen(false);
+  }, [pathname]);
 
   const handleLogout = async () => {
     const res = await fetch("/api/auth/logout", { method: "POST" });
@@ -61,29 +65,34 @@ const Header: React.FC = () => {
             >
               Snippets
             </Link>
-            {user && user.role === "admin" && (
-              <Link
-                href="/admin"
-                className={isActive("/admin") ? styles.active : ""}
-              >
-                Admin
-              </Link>
-            )}
           </div>
+        </div>
+        <div className={styles.right}>
+          {user && (
+            <Dropdown
+              className={styles.userDropdown}
+              options={[
+                { label: "Admin", href: "/admin" },
+                { label: "Logout", onClick: handleLogout },
+              ]}
+              onSelect={() => {}}
+            >
+              {user.name}
+            </Dropdown>
+          )}
           <div className={styles.themeToggle}>
             <ThemeToggle />
           </div>
+          <button
+            className={styles.hamburger}
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+          >
+            <span ref={menuIconRef} className={styles.menuIcon}>
+              <FiMenu className={styles.menuOpenIcon} size={24} />
+              <FiX className={styles.menuCloseIcon} size={24} />
+            </span>
+          </button>
         </div>
-        <button
-          className={styles.hamburger}
-          onClick={() => setIsMenuOpen(!isMenuOpen)}
-        >
-          {isMenuOpen ? (
-            <FiX className={`${styles.menuIcon} ${styles.open}`} size={24} />
-          ) : (
-            <FiMenu className={styles.menuIcon} size={24} />
-          )}
-        </button>
       </nav>
     </header>
   );

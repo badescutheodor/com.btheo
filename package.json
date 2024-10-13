@@ -6,7 +6,7 @@
     "dev": "ts-node --project tsconfig.json server.ts",
     "build": "next build",
     "start": "NODE_ENV=production ts-node --project tsconfig.server.json server.ts",
-    "init-db": "npx ts-node --esm ./src/scripts/init.ts"
+    "init": "npx ts-node --esm ./src/scripts/init.ts"
   },
   "dependencies": {
     "@nextui-org/react": "^2.4.8",

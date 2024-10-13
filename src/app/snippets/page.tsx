@@ -35,7 +35,7 @@ async function SnippetsPage({
 
   return (
     <div>
-      <h1>Code Snippets</h1>
+      <h3>Code Snippets</h3>
       <Suspense fallback={<div>Loading...</div>}>
         <SnippetsClient
           initialSnippets={snippets}

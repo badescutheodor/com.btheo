@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const reqBody = await req.json();
-    const { postId, content, name } = reqBody;
+    const { postId, content, name, email, website } = reqBody;
 
     const errors = await Comment.validate(reqBody);
     
@@ -48,6 +48,8 @@ export async function POST(req: NextRequest) {
       name,
       content,
       post: { id: postId },
+      email,
+      website
     });
 
     await commentRepository.save(newComment);

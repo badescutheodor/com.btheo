@@ -3,6 +3,19 @@ import { getSession } from '@/lib/auth';
 import { getDB } from '@/lib/db';
 import { GuestbookEntry } from '@/lib/entities/GuestbookEntry';
 
+async function getLocationFromIP(ip: string): Promise<string | undefined> {
+  try {
+    const response = await fetch(`http://ip-api.com/json/${ip}`);
+    const data = await response.json();
+    if (data.status === 'success') {
+      return `${data.city}, ${data.country}`;
+    }
+  } catch (error) {
+    console.error('Error fetching location:', error);
+  }
+  return undefined;
+}
+
 export async function GET(req: NextRequest) {
   try {
     const db = await getDB();
@@ -20,7 +33,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const reqBody = await req.json();
-    const { name, email, message, location } = reqBody;
+    const { name, email, message, website } = reqBody;
 
     const errors = await GuestbookEntry.validate(reqBody);
     
@@ -35,7 +48,8 @@ export async function POST(req: NextRequest) {
       name,
       email,
       message,
-      location,
+      website,
+      location: await getLocationFromIP(req.ip ?? 'unknown'),
       ipAddress: req.ip,
       userAgent: req.headers.get('user-agent') || undefined,
     });
@@ -58,15 +72,19 @@ export async function PUT(req: NextRequest) {
     const guestbookRepository = db.getRepository(GuestbookEntry);
 
     const reqBody = await req.json();
-    const { id, isApproved } = reqBody;
+    const { id, ...others } = reqBody;
 
-    const entry = await guestbookRepository.findOne({ where: { id } });
+    let entry = await guestbookRepository.findOne({ where: { id } }) || {};
 
     if (!entry) {
       return NextResponse.json({ message: 'Guestbook entry not found' }, { status: 404 });
     }
 
-    entry.isApproved = isApproved;
+    entry = {
+      ...entry,
+      ...others
+    }
+
     const errors = await GuestbookEntry.validate(entry);
     
     if (errors.length > 0) {

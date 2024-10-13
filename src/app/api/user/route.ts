@@ -17,6 +17,7 @@ export function GET(req: NextRequest) {
     return NextResponse.json({
         id: user.userId,
         email: user.email,
+        name: user.name,
         role: user.role,
         avatar: user.avatar
     });

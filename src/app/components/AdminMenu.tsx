@@ -23,11 +23,9 @@ interface MenuItem {
   label: string;
 }
 
-interface AdminMenuProps {
-  children: React.ReactNode;
-}
+interface AdminMenuProps {}
 
-const AdminMenu: React.FC<AdminMenuProps> = ({ children }) => {
+const AdminMenu: React.FC<AdminMenuProps> = () => {
   const { user } = useUser();
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
@@ -43,7 +41,7 @@ const AdminMenu: React.FC<AdminMenuProps> = ({ children }) => {
   ];
 
   if (!user || user.role !== "admin") {
-    return <>{children}</>;
+    return null;
   }
 
   return (

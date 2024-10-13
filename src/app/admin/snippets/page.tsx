@@ -273,7 +273,7 @@ const SnippetsPage: React.FC = () => {
 
   return (
     <div>
-      <h1>Snippets Management</h1>
+      <h3>Snippets Management</h3>
 
       <h2>Add New Snippet</h2>
       <form onSubmit={handleAddSnippet}>

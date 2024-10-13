@@ -26,18 +26,15 @@ async function BlogListingPage({
   const totalPages = Math.ceil(totalCount / 10);
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-8">Blog Posts</h1>
-      <Suspense fallback={<div>Loading...</div>}>
-        <BlogListingClient
-          initialPosts={posts}
-          labels={labels}
-          initialPage={page}
-          initialLabel={label}
-          totalPages={totalPages}
-        />
-      </Suspense>
-    </div>
+    <Suspense fallback={<div>Loading...</div>}>
+      <BlogListingClient
+        initialPosts={posts}
+        labels={labels}
+        initialPage={page}
+        initialLabel={label}
+        totalPages={totalPages}
+      />
+    </Suspense>
   );
 }
 

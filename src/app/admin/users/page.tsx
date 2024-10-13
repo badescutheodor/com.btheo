@@ -224,7 +224,7 @@ const UsersPage = () => {
 
   return (
     <div>
-      <h1>Users Management</h1>
+      <h3>Users Management</h3>
 
       <h2>Add New User</h2>
       <form onSubmit={handleAddUser}>

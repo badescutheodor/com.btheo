@@ -1,5 +1,5 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from "typeorm";
-import { IsNotEmpty, IsString, IsEmail, IsOptional, IsBoolean, IsDate, MaxLength, IsIP, validate } from "class-validator";
+import { IsNotEmpty, IsString, IsEmail, IsOptional, IsBoolean, IsDate, MaxLength, IsIP, IsUrl, validate } from "class-validator";
 import { plainToClass } from "class-transformer";
 
 @Entity()
@@ -48,6 +48,12 @@ export class GuestbookEntry {
     @IsString()
     @MaxLength(255)
     userAgent: string;
+
+    @Column({ nullable: true })
+    @IsOptional()
+    @IsUrl()
+    @MaxLength(255)
+    website: string;
 
     static async validate(entryData: Partial<GuestbookEntry>): Promise<string[]> {
         const entry = plainToClass(GuestbookEntry, entryData);

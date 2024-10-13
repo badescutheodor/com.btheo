@@ -103,7 +103,7 @@ const LabelsPage: React.FC = () => {
 
   return (
     <div>
-      <h1>Labels Management</h1>
+      <h3>Labels Management</h3>
 
       <h2>Add New Label</h2>
       <form onSubmit={handleAddLabel}>

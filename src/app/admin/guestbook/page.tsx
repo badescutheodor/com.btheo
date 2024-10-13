@@ -119,8 +119,7 @@ const GuestbookPage: React.FC = () => {
 
   return (
     <div>
-      <h1 className="text-3xl font-bold mb-6">Guestbook</h1>
-
+      <h3 className="text-3xl font-bold mb-6">Guestbook</h3>
       <h2 className="text-2xl font-semibold mb-4">Leave a Message</h2>
       <form onSubmit={handleAddEntry} className="mb-8">
         <input

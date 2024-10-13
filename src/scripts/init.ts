@@ -30,8 +30,13 @@ async function initDb() {
 
   // Create initial settings if not exist
   const initialSettings = [
-    { key: "title", value: "My Awesome Website" },
-    { key: "landingImage", value: "/images/default-landing.jpg" }
+    { key: "homeTitle", value: "Theodor Badescu" },
+    { key: "homeDescription", value: "Personal blog of Theodor Badescu" },
+    { key: "homeImage", value: "/images/default-landing.jpg" },
+    { key: "name", value: "Theodor Badescu" },
+    { key: "githubLink", value: "https://github.com/bthe0" },
+    { key: "linkedinLink", value: "https://www.linkedin.com/in/bthe0/" },
+    { key: "twitterLink", value: "https://x.com/bthe0_" },
   ];
 
   for (const setting of initialSettings) {

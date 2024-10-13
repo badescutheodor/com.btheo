@@ -211,9 +211,8 @@ const BlogPostsPage: React.FC = () => {
   }
 
   return (
-    <div className="container mx-auto p-4">
-      <h1 className="text-3xl font-bold mb-6">Blog Posts Management</h1>
-
+    <div>
+      <h3 className="text-3xl font-bold mb-6">Blog Posts Management</h3>
       <h2 className="text-2xl font-semibold mb-4">Add New Blog Post</h2>
       <form onSubmit={handleAddBlogPost} className="mb-8">
         <input
@@ -225,12 +224,14 @@ const BlogPostsPage: React.FC = () => {
           }
           className="w-full p-2 mb-4 border rounded"
         />
-        <MdEditor
-          style={{ height: "400px" }}
-          renderHTML={(text) => mdParser.render(text)}
-          onChange={handleEditorChange}
-          value={newBlogPost.content}
-        />
+        <div className="md-editor-dark-mode">
+          <MdEditor
+            style={{ height: "400px" }}
+            renderHTML={(text) => mdParser.render(text)}
+            onChange={handleEditorChange}
+            value={newBlogPost.content}
+          />
+        </div>
         <input
           type="date"
           value={newBlogPost.date}

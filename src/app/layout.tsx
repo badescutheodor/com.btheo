@@ -1,10 +1,11 @@
 import "normalize.css";
 import "@/app/styles/global.css";
 import Layout from "@/app/components/Layout";
-import { getCurrentUser } from "@/lib/utils";
+import { getCurrentUser, getSettings } from "@/lib/utils";
 import { Inter, Poppins } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import BackgroundTransition from "./components/BodyTransition";
+import { SettingsProvider } from "./contexts/SettingsContext";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -22,17 +23,23 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const user = await getCurrentUser();
+  const [user, settings] = await Promise.all([getCurrentUser(), getSettings()]);
 
   return (
-    <html lang="en" className={`${inter.className} ${poppins.className}`}>
+    <html
+      lang="en"
+      className={`${inter.className} ${poppins.className}`}
+      suppressHydrationWarning
+    >
       <body>
-        <ThemeProvider>
-          <Layout initialUser={user}>
-            <BackgroundTransition />
-            <main>{children}</main>
-          </Layout>
-        </ThemeProvider>
+        <SettingsProvider initialSettings={settings}>
+          <ThemeProvider>
+            <Layout initialUser={user} initialSettings={settings}>
+              <BackgroundTransition />
+              <main>{children}</main>
+            </Layout>
+          </ThemeProvider>
+        </SettingsProvider>
       </body>
     </html>
   );

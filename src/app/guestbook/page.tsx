@@ -20,7 +20,7 @@ export default function Guestbook() {
 
   return (
     <div className="guestbook">
-      <h1>Guestbook</h1>
+      <h3>Guestbook</h3>
       <form onSubmit={handleSubmit}>
         <input
           type="text"

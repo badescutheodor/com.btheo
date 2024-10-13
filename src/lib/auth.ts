@@ -27,12 +27,12 @@ export async function validateUser(email: string, password: string) {
 }
 
 export function generateToken(user: User) {
-  return sign({ userId: user.id, email: user.email, role: user.role }, JWT_SECRET, { expiresIn: '1d' });
+  return sign({ userId: user.id, email: user.email, role: user.role, name: user.name, avatar: user.avatar }, JWT_SECRET, { expiresIn: '1d' });
 }
 
 export function verifyToken(token: string) {
   try {
-    return verify(token, JWT_SECRET) as { userId: number, email: string, role: string, avatar: string };
+    return verify(token, JWT_SECRET) as { userId: number, email: string, role: string, avatar: Record<string, any>, name: string };
   } catch {
     return null;
   }

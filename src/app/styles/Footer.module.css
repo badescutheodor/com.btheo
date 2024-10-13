@@ -1,0 +1,18 @@
+.links {
+  display: flex;
+}
+
+.links ul {
+  list-style: none;
+  padding: 0;
+  margin-right: 34px;
+}
+
+.links ul li {
+  margin-bottom: 12px;
+}
+
+.bottomText {
+  font-size: 13px;
+  margin: 10px 0 30px 0;
+}

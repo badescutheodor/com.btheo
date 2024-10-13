@@ -16,7 +16,7 @@ const SettingsPage: React.FC = () => {
   const [newSetting, setNewSetting] = useState({ key: "", value: "" });
   const [editingSetting, setEditingSetting] = useState<Setting | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [landingImage, setLandingImage] = useState<File | null>(null);
+  const [homeImage, setHomeImage] = useState<File | null>(null);
 
   useEffect(() => {
     fetchSettings();
@@ -42,8 +42,8 @@ const SettingsPage: React.FC = () => {
     try {
       let settingValue = newSetting.value;
 
-      if (newSetting.key === "landingImage" && landingImage) {
-        const uploadedFile = await uploadFile(landingImage, {
+      if (newSetting.key === "homeImage" && homeImage) {
+        const uploadedFile = await uploadFile(homeImage, {
           type: "landing-image",
         });
         settingValue = uploadedFile.path;
@@ -58,7 +58,7 @@ const SettingsPage: React.FC = () => {
       if (response.ok) {
         await fetchSettings();
         setNewSetting({ key: "", value: "" });
-        setLandingImage(null);
+        setHomeImage(null);
       } else {
         const data = await response.json();
         throw new Error(data.message || "Failed to add setting");
@@ -76,8 +76,8 @@ const SettingsPage: React.FC = () => {
     try {
       let settingValue = editingSetting.value;
 
-      if (editingSetting.key === "landingImage" && landingImage) {
-        const uploadedFile = await uploadFile(landingImage, {
+      if (editingSetting.key === "homeImage" && homeImage) {
+        const uploadedFile = await uploadFile(homeImage, {
           type: "landing-image",
         });
         settingValue = uploadedFile.path;
@@ -92,7 +92,7 @@ const SettingsPage: React.FC = () => {
       if (response.ok) {
         await fetchSettings();
         setEditingSetting(null);
-        setLandingImage(null);
+        setHomeImage(null);
       } else {
         const data = await response.json();
         throw new Error(data.message || "Failed to update setting");
@@ -105,7 +105,7 @@ const SettingsPage: React.FC = () => {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setLandingImage(e.target.files[0]);
+      setHomeImage(e.target.files[0]);
     }
   };
 
@@ -115,7 +115,7 @@ const SettingsPage: React.FC = () => {
 
   return (
     <div>
-      <h1>Settings Management</h1>
+      <h3>Settings Management</h3>
 
       <h2>Add New Setting</h2>
       <form onSubmit={handleAddSetting}>
@@ -127,7 +127,7 @@ const SettingsPage: React.FC = () => {
             setNewSetting({ ...newSetting, key: e.target.value })
           }
         />
-        {newSetting.key === "landingImage" ? (
+        {newSetting.key === "homeImage" ? (
           <input type="file" accept="image/*" onChange={handleFileChange} />
         ) : (
           <input
@@ -151,7 +151,7 @@ const SettingsPage: React.FC = () => {
             {editingSetting && editingSetting.id === setting.id ? (
               <form onSubmit={handleUpdateSetting}>
                 <input type="text" value={editingSetting.key} readOnly />
-                {editingSetting.key === "landingImage" ? (
+                {editingSetting.key === "homeImage" ? (
                   <input
                     type="file"
                     accept="image/*"
