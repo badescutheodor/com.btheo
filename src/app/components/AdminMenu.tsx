@@ -15,6 +15,7 @@ import {
   FiChevronRight,
 } from "react-icons/fi";
 import { IconType } from "react-icons";
+import styles from "../styles/AdminMenu.module.css";
 
 interface MenuItem {
   href: string;
@@ -22,14 +23,14 @@ interface MenuItem {
   label: string;
 }
 
-const AdminMenu: React.FC = () => {
+interface AdminMenuProps {
+  children: React.ReactNode;
+}
+
+const AdminMenu: React.FC<AdminMenuProps> = ({ children }) => {
   const { user } = useUser();
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
-
-  if (!user || user.role !== "admin") {
-    return null;
-  }
 
   const menuItems: MenuItem[] = [
     { href: "/admin", icon: FiHome, label: "Dashboard" },
@@ -41,25 +42,33 @@ const AdminMenu: React.FC = () => {
     { href: "/admin/settings", icon: FiSettings, label: "Settings" },
   ];
 
+  if (!user || user.role !== "admin") {
+    return <>{children}</>;
+  }
+
   return (
-    <nav className={`admin-nav ${isOpen ? "open" : ""}`}>
-      <button onClick={() => setIsOpen(!isOpen)} className="toggle-button">
-        <FiChevronRight className={isOpen ? "rotate-icon" : ""} />
-      </button>
-      <ul>
-        {menuItems.map((item) => (
-          <li key={item.href}>
-            <Link
-              href={item.href}
-              className={`menu-link ${pathname === item.href ? "active" : ""}`}
-            >
-              <item.icon />
-              <span>{item.label}</span>
-            </Link>
-          </li>
-        ))}
-      </ul>
-    </nav>
+    <>
+      <nav className={`admin-nav ${styles.adminNav} ${isOpen ? "open" : ""}`}>
+        <button onClick={() => setIsOpen(!isOpen)} className={"toggle-button"}>
+          <FiChevronRight className={isOpen ? styles.rotateIcon : ""} />
+        </button>
+        <ul className={styles.menuList}>
+          {menuItems.map((item) => (
+            <li key={item.href} className={styles.menuItem}>
+              <Link
+                href={item.href}
+                className={`${styles.menuLink} ${
+                  pathname === item.href ? styles.active : ""
+                }`}
+              >
+                <item.icon className={styles.menuLinkIcon} />
+                <span>{item.label}</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </nav>
+    </>
   );
 };
 

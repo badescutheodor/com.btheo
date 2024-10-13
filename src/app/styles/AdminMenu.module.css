@@ -1,0 +1,54 @@
+.adminNav {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background-color: var(--bg);
+  transition: width 0.3s ease;
+  width: 4rem;
+  overflow: hidden;
+  z-index: 2;
+  box-shadow: 4px 0 10px rgba(0, 0, 0, 0.04);
+}
+
+.menuLink svg {
+  height: 1.3rem;
+  width: 1.3rem;
+}
+
+.menuLink {
+  display: flex;
+  align-items: center;
+  color: var(--text);
+  text-decoration: none;
+  transition: color 0.3s ease, background-color 0.3s ease;
+  font-size: var(--base-font-size);
+  padding: var(--spacing-md) var(--spacing-md);
+}
+
+.rotateIcon {
+  transform: rotate(180deg);
+  transition: transform 0.3s ease;
+}
+
+.menuList {
+  padding-top: 4rem;
+  list-style-type: none;
+  margin: 0;
+  padding-left: 0;
+}
+
+.menuItem {
+  margin-bottom: var(--spacing-sm);
+}
+
+.menuLink:hover,
+.menuLink:active,
+.menuLink:focus {
+  background-color: var(--bg-lighter);
+  text-decoration: none;
+}
+
+.active {
+  color: var(--accent);
+}

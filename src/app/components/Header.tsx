@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { useUser } from "../contexts/UserContext";
 import ThemeToggle from "./ThemeToggle";
 import { FiMenu, FiX } from "react-icons/fi";
+import styles from "../styles/Header.module.css";
 
 const Header: React.FC = () => {
   const { user, setUser } = useUser();
@@ -20,11 +21,7 @@ const Header: React.FC = () => {
 
   useEffect(() => {
     if (navLinksRef.current) {
-      if (isMenuOpen) {
-        navLinksRef.current?.classList.add("open");
-      } else {
-        navLinksRef.current?.classList.remove("open");
-      }
+      navLinksRef.current.classList.toggle(styles.open, isMenuOpen);
     }
   }, [isMenuOpen]);
 
@@ -39,49 +36,52 @@ const Header: React.FC = () => {
   const isActive = (path: string) => pathname === path;
 
   return (
-    <header>
+    <header className={styles.header}>
       <nav>
-        <div className="nav-container">
-          <div ref={navLinksRef} className="nav-links">
-            <Link href="/" className={isActive("/") ? "active" : ""}>
+        <div className={styles.navContainer}>
+          <div ref={navLinksRef} className={styles.navLinks}>
+            <Link href="/" className={isActive("/") ? styles.active : ""}>
               Home
             </Link>
             <Link
               href="/guestbook"
-              className={isActive("/guestbook") ? "active" : ""}
+              className={isActive("/guestbook") ? styles.active : ""}
             >
               Guestbook
             </Link>
-            <Link href="/blog" className={isActive("/blog") ? "active" : ""}>
+            <Link
+              href="/blog"
+              className={isActive("/blog") ? styles.active : ""}
+            >
               Blog
             </Link>
             <Link
               href="/snippets"
-              className={isActive("/snippets") ? "active" : ""}
+              className={isActive("/snippets") ? styles.active : ""}
             >
               Snippets
             </Link>
             {user && user.role === "admin" && (
               <Link
                 href="/admin"
-                className={isActive("/admin") ? "active" : ""}
+                className={isActive("/admin") ? styles.active : ""}
               >
                 Admin
               </Link>
             )}
           </div>
-          <div className="theme-toggle">
+          <div className={styles.themeToggle}>
             <ThemeToggle />
           </div>
         </div>
         <button
-          className="hamburger"
+          className={styles.hamburger}
           onClick={() => setIsMenuOpen(!isMenuOpen)}
         >
           {isMenuOpen ? (
-            <FiX className="menu-icon open" size={24} />
+            <FiX className={`${styles.menuIcon} ${styles.open}`} size={24} />
           ) : (
-            <FiMenu className="menu-icon" size={24} />
+            <FiMenu className={styles.menuIcon} size={24} />
           )}
         </button>
       </nav>

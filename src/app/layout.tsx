@@ -1,5 +1,5 @@
 import "normalize.css";
-import "@/app/styles/index.css";
+import "@/app/styles/global.css";
 import Layout from "@/app/components/Layout";
 import { getCurrentUser } from "@/lib/utils";
 import { Inter, Poppins } from "next/font/google";
