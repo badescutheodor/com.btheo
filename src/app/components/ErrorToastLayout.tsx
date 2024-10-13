@@ -23,7 +23,7 @@ const ErrorToastLayout = ({ children }) => {
   };
 
   return (
-    <div style={{ position: "relative", minHeight: "100vh" }}>
+    <>
       {children}
       {error && (
         <div
@@ -58,7 +58,7 @@ const ErrorToastLayout = ({ children }) => {
           </button>
         </div>
       )}
-    </div>
+    </>
   );
 };
 

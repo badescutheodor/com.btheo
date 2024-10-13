@@ -34,8 +34,8 @@ async function SnippetsPage({
   const totalPages = Math.ceil(totalCount / 10); // Assuming 10 snippets per page
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-8">Code Snippets</h1>
+    <div>
+      <h1>Code Snippets</h1>
       <Suspense fallback={<div>Loading...</div>}>
         <SnippetsClient
           initialSnippets={snippets}

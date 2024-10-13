@@ -1,5 +1,5 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne } from "typeorm";
-import { IsNotEmpty, IsString, IsDate, ValidateNested, MaxLength } from "class-validator";
+import { IsNotEmpty, IsString, IsDate, ValidateNested, MaxLength, validate } from "class-validator";
 import { Type, plainToClass } from "class-transformer";
 import { BlogPost } from "./BlogPost";
 import type { Relation } from "typeorm";

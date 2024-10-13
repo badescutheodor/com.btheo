@@ -1,5 +1,4 @@
 "use client";
-import AdminMenu from "../components/AdminMenu";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useUser } from "../contexts/UserContext";
@@ -19,10 +18,5 @@ export default function AdminLayout({
     }
   }, [user, router]);
 
-  return (
-    <ErrorToastLayout>
-      <AdminMenu />
-      <main>{children}</main>
-    </ErrorToastLayout>
-  );
+  return <ErrorToastLayout>{children}</ErrorToastLayout>;
 }

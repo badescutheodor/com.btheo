@@ -1,6 +1,7 @@
 import Header from "./Header";
 import Footer from "./Footer";
 import { UserProvider } from "@/app/contexts/UserContext";
+import AdminMenu from "./AdminMenu";
 
 interface User {
   id: number;
@@ -18,11 +19,14 @@ export default function Layout({
   initialUser: User | null;
 }) {
   return (
-    <div className="layout">
+    <div className="layout container">
       <UserProvider initialUser={initialUser}>
-        <Header />
-        <main>{children}</main>
-        <Footer />
+        <AdminMenu />
+        <div className={"page-content"}>
+          <Header />
+          {children}
+          <Footer />
+        </div>
       </UserProvider>
     </div>
   );
