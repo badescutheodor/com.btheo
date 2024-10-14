@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState } from "react";
+import React, { createContext, useContext, useState, useEffect } from "react";
 
 interface User {
   id: number;
@@ -24,6 +24,15 @@ export function UserProvider({
   initialUser: User | null;
 }) {
   const [user, setUser] = useState<User | null>(initialUser);
+
+  const fetchUser = async () => {
+    const res = await fetch("/api/user");
+    if (res.ok) setUser(await res.json());
+  };
+
+  useEffect(() => {
+    fetchUser();
+  }, []);
 
   return (
     <UserContext.Provider value={{ user, setUser }}>

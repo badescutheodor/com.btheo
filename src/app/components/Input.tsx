@@ -51,8 +51,8 @@ interface InputProps {
   accept?: string;
   maxLength?: number;
   autoFocus?: boolean;
-  value?: any;
-  onChange?: (value: any) => void;
+  value?: unknown;
+  onChange?: (value: unknown) => void;
   onBlur?: () => void;
   error?: string;
 }
@@ -83,7 +83,7 @@ const Input: React.FC<InputProps> = React.memo(
     error: propError,
   }) => {
     const formContext = useForm();
-    const [isFocused, setIsFocused] = useState(false);
+    const [isFocused, setIsFocused] = useState(autoFocus);
     const inputRef = useRef<
       HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
     >(null);
@@ -120,7 +120,10 @@ const Input: React.FC<InputProps> = React.memo(
       if (isControlled) {
         propOnBlur?.();
       } else {
-        formContext?.validateField(name);
+        setTimeout(() => {
+          formContext?.setFieldTouched(name, true);
+          formContext?.validateField(name);
+        }, 200);
       }
     };
 
@@ -129,6 +132,7 @@ const Input: React.FC<InputProps> = React.memo(
         propOnChange(newValue);
       } else {
         formContext?.setFieldValue(name, newValue);
+        touched && formContext?.validateField(name);
       }
     };
 
@@ -205,7 +209,7 @@ const Input: React.FC<InputProps> = React.memo(
         onBlur: handleBlur,
         disabled,
         placeholder,
-        className: `${styles.input} ${touched && error ? styles.error : ""} ${
+        className: `${styles.input} ${error ? styles.error : ""} ${
           iconLeft ? styles.hasIconLeft : ""
         } ${iconRight ? styles.hasIconRight : ""} ${
           addonLeft ? styles.hasAddonLeft : ""
@@ -277,6 +281,7 @@ const Input: React.FC<InputProps> = React.memo(
                 checked={!!value}
                 onChange={(checked) => handleChange(checked)}
                 label={label}
+                value={value}
                 disabled={disabled}
               />
             </Suspense>
@@ -335,20 +340,25 @@ const Input: React.FC<InputProps> = React.memo(
     return (
       <div
         className={`${styles.inputWrapper} ${
-          floatingLabel ? styles.floatingLabel : ""
+          floatingLabel && (isFocused || value) ? styles.floatingLabel : ""
         }`}
       >
         {label &&
           type !== "switch" &&
           type !== "checkbox" &&
-          type !== "radio" && (
+          type !== "radio" &&
+          (floatingLabel ? floatingLabel && (value || isFocused) : true) && (
             <label className={styles.label} htmlFor={name}>
               {label}
             </label>
           )}
         <div className={styles.inputContainer}>
           {iconLeft && (
-            <span className={`${styles.icon} ${styles.iconLeft}`}>
+            <span
+              className={`${styles.icon} ${styles.iconLeft} ${
+                error ? styles.error : ""
+              }`}
+            >
               {iconLeft}
             </span>
           )}
@@ -379,10 +389,12 @@ const Input: React.FC<InputProps> = React.memo(
           )}
           {loading && <div className={styles.loader}></div>}
         </div>
-        {touched && error && <p className={styles.errorMessage}>{error}</p>}
+        {error && <p className={styles.errorMessage}>{error}</p>}
       </div>
     );
   }
 );
+
+Input.displayName = "Input";
 
 export default Input;

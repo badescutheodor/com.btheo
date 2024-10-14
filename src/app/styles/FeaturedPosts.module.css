@@ -52,6 +52,7 @@
   margin-bottom: 3rem;
   color: var(--text);
   transition: color 0.3s ease;
+  line-height: 29px;
 }
 
 .viewsContainer {

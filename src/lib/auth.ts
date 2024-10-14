@@ -1,9 +1,9 @@
 import { compare, hash } from 'bcryptjs';
-import { sign, verify } from 'jsonwebtoken';
 import { User } from './entities/User';
 import { getDB } from '@/lib/db';
 import { NextRequest } from 'next/server';
 import { cookies } from 'next/headers';
+import jwt from './jwt';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret';
 
@@ -16,6 +16,17 @@ export async function createUser(name: string, email: string, password: string, 
   return user;
 }
 
+export async function getUserById(id: number) {
+  const dataSource = await getDB();
+  const userRepository = dataSource.getRepository(User);
+  return await userRepository.findOne({
+    where: {
+      id
+    },
+    relations: ['avatar'] 
+  });
+}
+
 export async function validateUser(email: string, password: string) {
   const dataSource = await getDB();
   const userRepository = dataSource.getRepository(User);
@@ -26,13 +37,13 @@ export async function validateUser(email: string, password: string) {
   return null;
 }
 
-export function generateToken(user: User) {
-  return sign({ userId: user.id, email: user.email, role: user.role, name: user.name, avatar: user.avatar }, JWT_SECRET, { expiresIn: '1d' });
+export async function generateToken(user: User) {
+  return await jwt.encode({ userId: user.id, email: user.email, role: user.role, name: user.name, avatar: user.avatar });
 }
 
-export function verifyToken(token: string) {
+export async function verifyToken(token: string) {
   try {
-    return verify(token, JWT_SECRET) as { userId: number, email: string, role: string, avatar: Record<string, any>, name: string };
+    return await jwt.decode({ token, secret: JWT_SECRET });
   } catch {
     return null;
   }

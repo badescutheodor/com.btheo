@@ -1,0 +1,17 @@
+.formErrors {
+}
+
+.formErrors h6 {
+  margin-top: 0;
+}
+
+.formErrors ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.formErrors li {
+  margin-bottom: var(--spacing-xs);
+  font-size: var(--medium-size);
+}

@@ -20,13 +20,15 @@
   color: var(--text);
   text-decoration: none !important;
   margin-right: 38px;
-  transition: background-color 0.3s ease, color 1s ease;
+  transition: background-color 0.3s ease, color 0.5s ease;
 }
 
 .navLinks a.active {
   font-weight: 500;
 }
 
+.navLinks a.active:focus,
+.navLinks a.active:visited,
 .navLinks a.active:hover {
   color: currentColor;
 }
@@ -118,7 +120,7 @@
     padding-left: inherit;
     padding-right: inherit;
     z-index: 4;
-    transition: max-height 0.3s ease-out, padding 0.3s ease-out;
+    transition: max-height 0s ease-out, padding 0.3s ease-out;
     max-height: 0;
     background-color: var(--bg);
   }
@@ -148,6 +150,8 @@
 
   .navLinks a:hover,
   .navLinks a.active,
+  .navLinks a:focus,
+  .navLinks a:visited,
   .navLinks button:visited {
     background: var(--bg-lighter);
     text-decoration: none !important;

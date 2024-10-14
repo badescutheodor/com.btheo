@@ -65,11 +65,11 @@
   --btn-font-size: clamp(0.9rem, 1.5vw, 1.1rem);
 
   /* Spacing */
-  --spacing-xs: 0.25rem;
-  --spacing-sm: 0.5rem;
-  --spacing-md: 1rem;
-  --spacing-lg: 1.5rem;
-  --spacing-xl: 2rem;
+  --spacing-xs: 0.3rem;
+  --spacing-sm: 0.8rem;
+  --spacing-md: 1.3rem;
+  --spacing-lg: 1.6rem;
+  --spacing-xl: 2.1rem;
 
   /* Border radius */
   --border-radius: 0.25rem;

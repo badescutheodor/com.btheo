@@ -15,7 +15,7 @@ import {
   FiChevronRight,
 } from "react-icons/fi";
 import { IconType } from "react-icons";
-import styles from "../styles/AdminMenu.module.css";
+import styles from "@/app/styles/AdminMenu.module.css";
 import cx from "classnames";
 
 interface MenuItem {
@@ -24,9 +24,7 @@ interface MenuItem {
   label: string;
 }
 
-interface AdminMenuProps {}
-
-const AdminMenu: React.FC<AdminMenuProps> = () => {
+const AdminMenu = () => {
   const { user } = useUser();
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();

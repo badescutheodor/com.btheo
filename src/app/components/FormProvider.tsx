@@ -7,37 +7,42 @@ import React, {
 } from "react";
 import * as yup from "yup";
 
-type ValidationRule = yup.AnySchema | ((value: any) => Promise<void> | void);
+type ValidationRule =
+  | yup.AnySchema
+  | ((value: unknown) => Promise<void> | void);
 
 export interface ValidationSchema {
   [key: string]: {
-    rules: ValidationRule[];
-    type: string;
+    rules?: ValidationRule[];
+    type?: string;
     options?: { value: string; label: string }[];
+    [key: string]: unknown;
   };
 }
 
 interface FormContextType {
-  values: Record<string, any>;
+  values: Record<string, unknown>;
   errors: Record<string, string>;
   touched: Record<string, boolean>;
   isSubmitting: boolean;
-  setFieldValue: (name: string, value: any) => void;
+  setFieldValue: (name: string, value: unknown) => void;
   setFieldTouched: (name: string, isTouched: boolean) => void;
   validateField: (name: string) => Promise<void>;
   validateForm: () => Promise<boolean>;
   resetForm: () => void;
   resetErrors: () => void;
-  submitForm: () => Promise<void>;
+  submitForm: (e: React.FormEvent<HTMLFormElement>) => Promise<void>;
+  isSubmitted: boolean;
+  resetSubmissionState: () => void;
 }
 
 const FormContext = createContext<FormContextType | undefined>(undefined);
 
 interface FormProviderProps {
   children: React.ReactNode;
-  initialValues: Record<string, any>;
-  validationSchema: ValidationSchema;
-  onSubmit: (values: Record<string, any>) => void;
+  initialValues?: Record<string, unknown>;
+  validationSchema?: ValidationSchema;
+  onSubmit: (values: Record<string, unknown>) => void;
 }
 
 export const FormProvider: React.FC<FormProviderProps> = ({
@@ -46,7 +51,8 @@ export const FormProvider: React.FC<FormProviderProps> = ({
   validationSchema,
   onSubmit,
 }) => {
-  const [values, setValues] = useState(initialValues);
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [values, setValues] = useState(initialValues || {});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -61,11 +67,11 @@ export const FormProvider: React.FC<FormProviderProps> = ({
 
   const validateField = useCallback(
     async (name: string) => {
-      const fieldSchema = validationSchema[name];
+      const fieldSchema = validationSchema?.[name];
       if (!fieldSchema) return;
 
       try {
-        for (const rule of fieldSchema.rules) {
+        for (const rule of fieldSchema.rules || []) {
           if (typeof rule === "function") {
             await rule(values[name]);
           } else {
@@ -86,9 +92,9 @@ export const FormProvider: React.FC<FormProviderProps> = ({
     const newErrors: Record<string, string> = {};
     let isValid = true;
 
-    for (const [field, schema] of Object.entries(validationSchema)) {
+    for (const [field, schema] of Object.entries(validationSchema || {})) {
       try {
-        for (const rule of schema.rules) {
+        for (const rule of schema.rules || []) {
           if (typeof rule === "function") {
             await rule(values[field]);
           } else {
@@ -96,10 +102,11 @@ export const FormProvider: React.FC<FormProviderProps> = ({
           }
         }
       } catch (error) {
-        if (error instanceof yup.ValidationError) {
-          newErrors[field] = error.message;
-          isValid = false;
-        }
+        isValid = false;
+        newErrors[field] =
+          error instanceof yup.ValidationError
+            ? error.message
+            : "This field failed validation";
       }
     }
 
@@ -108,23 +115,37 @@ export const FormProvider: React.FC<FormProviderProps> = ({
   }, [values, validationSchema]);
 
   const resetForm = useCallback(() => {
-    setValues(initialValues);
+    setValues(initialValues || {});
     setErrors({});
     setTouched({});
+    setIsSubmitted(false); // Reset isSubmitted when form is reset
   }, [initialValues]);
+
+  const resetSubmissionState = useCallback(() => {
+    setIsSubmitted(false);
+  }, []);
 
   const resetErrors = useCallback(() => {
     setErrors({});
   }, []);
 
-  const submitForm = useCallback(async () => {
-    setIsSubmitting(true);
-    const isValid = await validateForm();
-    if (isValid) {
-      await onSubmit(values);
-    }
-    setIsSubmitting(false);
-  }, [validateForm, onSubmit, values]);
+  const submitForm = useCallback(
+    async (e: React.FormEvent<HTMLFormElement>) => {
+      e.preventDefault();
+      setIsSubmitting(true);
+      if (validationSchema) {
+        const isValid = await validateForm();
+        if (isValid) {
+          await onSubmit(values || {});
+        }
+      } else {
+        await onSubmit(values || {});
+      }
+      setIsSubmitting(false);
+      setIsSubmitted(true);
+    },
+    [validateForm, onSubmit, values]
+  );
 
   const contextValue = useMemo(
     () => ({
@@ -139,6 +160,8 @@ export const FormProvider: React.FC<FormProviderProps> = ({
       resetForm,
       resetErrors,
       submitForm,
+      isSubmitted,
+      resetSubmissionState,
     }),
     [
       values,
@@ -152,11 +175,15 @@ export const FormProvider: React.FC<FormProviderProps> = ({
       resetForm,
       resetErrors,
       submitForm,
+      isSubmitted,
+      resetSubmissionState,
     ]
   );
 
   return (
-    <FormContext.Provider value={contextValue}>{children}</FormContext.Provider>
+    <FormContext.Provider value={contextValue}>
+      <form onSubmit={submitForm}>{children}</form>
+    </FormContext.Provider>
   );
 };
 
@@ -173,7 +200,16 @@ export const useFormOperations = () => {
   if (context === undefined) {
     throw new Error("useFormOperations must be used within a FormProvider");
   }
-  const { resetForm, submitForm, resetErrors, errors, isSubmitting } = context;
+
+  const {
+    resetForm,
+    submitForm,
+    resetErrors,
+    errors,
+    isSubmitting,
+    isSubmitted,
+    resetSubmissionState,
+  } = context;
   const hasErrors = Object.keys(errors).length > 0;
 
   return {
@@ -182,5 +218,7 @@ export const useFormOperations = () => {
     resetErrors,
     hasErrors,
     isSubmitting,
+    isSubmitted,
+    resetSubmissionState,
   };
 };

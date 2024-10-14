@@ -1,0 +1,27 @@
+.loginPage {
+  width: 400px;
+  margin: 40px auto 90px auto;
+  background: var(--gray-100);
+  padding: 10px 30px 60px 30px;
+}
+
+.loginPage h2 {
+  margin-bottom: 0;
+  text-align: center;
+}
+
+.loginPage > p {
+  margin-top: 12px;
+  margin-bottom: 24px;
+  text-align: center;
+}
+
+.loginPage label {
+  text-align: left;
+}
+
+@media (max-width: 768px) {
+  .loginPage {
+    width: 100%;
+  }
+}

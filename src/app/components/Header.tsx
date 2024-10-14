@@ -16,7 +16,7 @@ interface Settings {
   [key: string]: any;
 }
 
-const Header: React.FC = ({ settings }: Settings) => {
+const Header = ({ settings }: Settings) => {
   const { user, setUser } = useUser();
   const router = useRouter();
   const pathname = usePathname();

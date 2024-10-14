@@ -18,6 +18,7 @@ interface ButtonProps {
   target?: string;
   rel?: string;
   maskAnimated?: 1 | 2 | 3;
+  type?: "button" | "submit" | "reset";
 }
 
 const Button: React.FC<ButtonProps> = ({
@@ -35,6 +36,7 @@ const Button: React.FC<ButtonProps> = ({
   rel,
   className,
   maskAnimated,
+  type,
   ...props
 }) => {
   const buttonClasses = [
@@ -83,6 +85,7 @@ const Button: React.FC<ButtonProps> = ({
 
   return (
     <button
+      type={type}
       onClick={onClick}
       disabled={disabled || loading}
       className={buttonClasses}

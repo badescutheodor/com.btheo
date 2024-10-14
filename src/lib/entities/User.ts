@@ -27,11 +27,11 @@ export class User {
   @IsEmail()
   email: string;
 
-  @Column()
   @IsNotEmpty()
   @IsString()
   @MinLength(8)
   @MaxLength(100)
+  @Column({ select: false })
   password: string;
 
   @Column()

@@ -1,6 +1,6 @@
 .inputWrapper {
   width: 100%;
-  margin-bottom: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
   position: relative;
 }
 
@@ -22,13 +22,18 @@
   padding: 12px;
   font-size: var(--small-size);
   border: 1px solid var(--input-border);
-  border-radius: var(--border-radius);
   background-color: var(--input-bg);
   color: var(--text);
   transition: all 0.3s ease;
 }
 
-.input:focus {
+.input.error:focus-visible,
+.input.error:focus {
+  border-color: var(--error);
+  outline: none;
+}
+
+.input:not(.error):focus {
   outline: none;
   border-color: var(--input-border-focus);
   background-color: var(--input-bg-focus);
@@ -78,17 +83,26 @@
 .errorMessage {
   color: var(--error);
   font-size: var(--small-size);
-  margin-top: var(--spacing-xs);
+  margin-top: 10px;
+}
+
+.error {
+  color: var(--error);
+  border-color: var(--error);
 }
 
 /* Floating label styles */
 .floatingLabel .label {
   position: absolute;
-  top: 50%;
-  left: var(--spacing-sm);
+  top: -14px;
+  z-index: 3;
   transform: translateY(-50%);
   transition: all 0.3s ease;
   pointer-events: none;
+}
+
+.floatingLabel {
+  top: 10px;
 }
 
 .floatingLabel .input:focus + .label,

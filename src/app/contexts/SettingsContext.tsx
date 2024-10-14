@@ -47,10 +47,6 @@ export function SettingsProvider({
     }
   }, []);
 
-  useEffect(() => {
-    setSettings(initialSettings);
-  }, [initialSettings]);
-
   return (
     <SettingsContext.Provider value={{ settings, refetchSettings }}>
       {children}

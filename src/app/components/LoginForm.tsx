@@ -1,15 +1,18 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/app/contexts/UserContext";
+import { FormProvider } from "./FormProvider";
+import Button from "./Button";
+import AutoFormBuilder from "./AutoFormBuilder";
+import { FiUser, FiLock } from "react-icons/fi";
+import * as yup from "yup";
+import FormErrors from "./FormErrors";
 
 export default function LoginForm() {
-  const [email, setEmail] = useState("");
-  const { user } = useUser();
-  const [password, setPassword] = useState("");
   const router = useRouter();
-  const { setUser } = useUser();
+  const { user, setUser } = useUser();
 
   useEffect(() => {
     let isMounted = true;
@@ -21,20 +24,18 @@ export default function LoginForm() {
     };
   }, [user, router]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (values: Record<string, unknown>) => {
     const res = await fetch("/api/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify(values),
     });
 
     if (res.ok) {
-      const userData = await res.json();
-      setUser(userData.user);
+      const { user } = await res.json();
+      setUser(user);
       router.push("/");
     } else {
-      alert("Login failed");
     }
   };
 
@@ -43,22 +44,41 @@ export default function LoginForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit}>
-      <input
-        type="email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        placeholder="Email"
-        required
+    <FormProvider
+      onSubmit={handleSubmit}
+      validationSchema={{
+        email: {
+          rules: [
+            yup.string().email("Invalid email").required("Email is required"),
+          ],
+        },
+        password: {
+          rules: [
+            yup.string().required("Password is required"),
+            yup.string().min(8, "Password must be at least 8 characters"),
+          ],
+        },
+      }}
+    >
+      <FormErrors />
+      <AutoFormBuilder
+        schema={{
+          email: {
+            type: "email",
+            placeholder: "Email",
+            autoFocus: true,
+            iconLeft: <FiUser />,
+          },
+          password: {
+            type: "password",
+            placeholder: "Password",
+            iconLeft: <FiLock />,
+          },
+        }}
       />
-      <input
-        type="password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        placeholder="Password"
-        required
-      />
-      <button type="submit">Login</button>
-    </form>
+      <Button fullWidth type="submit" size="medium">
+        Login
+      </Button>
+    </FormProvider>
   );
 }

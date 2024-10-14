@@ -10,7 +10,7 @@ const AutoFormBuilder: React.FC<AutoFormBuilderProps> = ({ schema }) => {
   return (
     <>
       {Object.entries(schema).map(([name, fieldSchema]) => {
-        const { type, options } = fieldSchema;
+        const { type, options, ...others } = fieldSchema;
         const label = name.charAt(0).toUpperCase() + name.slice(1);
 
         switch (type) {
@@ -19,7 +19,15 @@ const AutoFormBuilder: React.FC<AutoFormBuilderProps> = ({ schema }) => {
           case "email":
           case "number":
           case "textarea":
-            return <Input key={name} type={type} name={name} label={label} />;
+            return (
+              <Input
+                key={name}
+                type={type}
+                name={name}
+                label={label}
+                {...others}
+              />
+            );
           case "select":
             return (
               <Input
@@ -28,11 +36,18 @@ const AutoFormBuilder: React.FC<AutoFormBuilderProps> = ({ schema }) => {
                 name={name}
                 label={label}
                 options={options}
+                {...others}
               />
             );
           case "checkbox":
             return (
-              <Input key={name} type="checkbox" name={name} label={label} />
+              <Input
+                key={name}
+                type="checkbox"
+                name={name}
+                label={label}
+                {...others}
+              />
             );
           case "radio":
             return options?.map((option) => (
@@ -42,14 +57,31 @@ const AutoFormBuilder: React.FC<AutoFormBuilderProps> = ({ schema }) => {
                 name={name}
                 label={option.label}
                 value={option.value}
+                {...others}
               />
             ));
           case "file":
-            return <Input key={name} type="file" name={name} label={label} />;
+            return (
+              <Input
+                key={name}
+                type="file"
+                name={name}
+                label={label}
+                {...others}
+              />
+            );
           case "date":
           case "time":
           case "datetime":
-            return <Input key={name} type={type} name={name} label={label} />;
+            return (
+              <Input
+                key={name}
+                type={type}
+                name={name}
+                label={label}
+                {...others}
+              />
+            );
           default:
             return null;
         }

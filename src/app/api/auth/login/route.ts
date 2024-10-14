@@ -7,15 +7,15 @@ export async function POST(req: NextRequest, res: NextResponse) {
     const user = await validateUser(email, password);
     
     if (user) {
-        const token = generateToken(user);
+        const token = await generateToken(user);
         cookies().set('token', token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'strict',
-            maxAge: 60 * 60 * 24 * 7, // 1 week
+            maxAge: 60 * 60 * 24, // 1 week
         });
 
-        return NextResponse.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role, avatar: user.avatar } });
+        return NextResponse.json({ token, user });
     }
 
     return NextResponse.json({ message: 'Invalid credentials' }, { status: 401 });
