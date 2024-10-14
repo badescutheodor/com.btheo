@@ -12,7 +12,7 @@ interface ButtonProps {
   color?: "default" | "primary" | "success" | "warning" | "error";
   inverted?: boolean;
   icon?: IconType;
-  onClick?: () => void;
+  onClick?: any;
   href?: string;
   className?: string;
   target?: string;

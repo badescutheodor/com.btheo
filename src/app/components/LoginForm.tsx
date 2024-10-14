@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/app/contexts/UserContext";
-import { FormProvider } from "./FormProvider";
+import { FormProvider, useForm } from "./FormProvider";
 import Button from "./Button";
 import AutoFormBuilder from "./AutoFormBuilder";
 import { FiUser, FiLock } from "react-icons/fi";
@@ -35,13 +35,8 @@ export default function LoginForm() {
       const { user } = await res.json();
       setUser(user);
       router.push("/");
-    } else {
     }
   };
-
-  if (user) {
-    return <div>Redirecting...</div>;
-  }
 
   return (
     <FormProvider
@@ -60,25 +55,35 @@ export default function LoginForm() {
         },
       }}
     >
-      <FormErrors />
-      <AutoFormBuilder
-        schema={{
-          email: {
-            type: "email",
-            placeholder: "Email",
-            autoFocus: true,
-            iconLeft: <FiUser />,
-          },
-          password: {
-            type: "password",
-            placeholder: "Password",
-            iconLeft: <FiLock />,
-          },
-        }}
-      />
-      <Button fullWidth type="submit" size="medium">
-        Login
-      </Button>
+      {({ isSubmitting, submitForm }) => (
+        <>
+          <FormErrors />
+          <AutoFormBuilder
+            schema={{
+              email: {
+                type: "email",
+                placeholder: "Email",
+                autoFocus: true,
+                iconLeft: <FiUser />,
+              },
+              password: {
+                type: "password",
+                placeholder: "Password",
+                iconLeft: <FiLock />,
+              },
+            }}
+          />
+          <Button
+            fullWidth
+            type="submit"
+            size="medium"
+            loading={isSubmitting}
+            onClick={(e) => submitForm(e)}
+          >
+            Login
+          </Button>
+        </>
+      )}
     </FormProvider>
   );
 }

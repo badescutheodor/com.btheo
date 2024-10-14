@@ -39,7 +39,7 @@ interface FormContextType {
 const FormContext = createContext<FormContextType | undefined>(undefined);
 
 interface FormProviderProps {
-  children: React.ReactNode;
+  children: React.ReactNode | ((context: FormContextType) => React.ReactNode);
   initialValues?: Record<string, unknown>;
   validationSchema?: ValidationSchema;
   onSubmit: (values: Record<string, unknown>) => void;
@@ -182,7 +182,11 @@ export const FormProvider: React.FC<FormProviderProps> = ({
 
   return (
     <FormContext.Provider value={contextValue}>
-      <form onSubmit={submitForm}>{children}</form>
+      {typeof children === "function" ? (
+        children(contextValue)
+      ) : (
+        <form onSubmit={submitForm}>{children}</form>
+      )}
     </FormContext.Provider>
   );
 };
