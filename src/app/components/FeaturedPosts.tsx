@@ -30,11 +30,12 @@ const posts: Post[] = [
 ];
 
 const FeaturedPosts: React.FC = async () => {
-  const postsX = await getFeaturedPosts(4);
+  //const postsX = await getFeaturedPosts(4);
 
   return (
     <div className={styles.featuredPosts}>
       <h3>Featured Posts</h3>
+      {!posts.length && <p>There are not featured posts to display</p>}
       <div className={styles.grid}>
         {posts.map((post, index) => (
           <div key={index} className={`${styles.post} ${post.gradientClass}`}>
