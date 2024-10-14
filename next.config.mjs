@@ -6,6 +6,9 @@ const { DefinePlugin } = pkg;
 const nextConfig = {
   experimental: {
     serverComponentsExternalPackages: ["typeorm"],
+    serverActions: {
+      bodySizeLimit: '10mb',
+    },
   },
   webpack: (config, { nextRuntime }) => {
     if (nextRuntime === 'edge') {
@@ -17,7 +20,7 @@ const nextConfig = {
     }
 
     return config;
-  },
+  }
 };
 
 export default nextConfig;

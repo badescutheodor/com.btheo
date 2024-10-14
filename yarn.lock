@@ -320,6 +320,11 @@
   "resolved" "https://registry.npmjs.org/@humanwhocodes/object-schema/-/object-schema-2.0.3.tgz"
   "version" "2.0.3"
 
+"@img/sharp-libvips-darwin-arm64@1.0.4":
+  "integrity" "sha512-XblONe153h0O2zuFfTAbQYAX2JhYmDHeWikp1LM9Hul9gVPjFY427k6dFEcOL72O01QxQsWi761svJ/ev9xEDg=="
+  "resolved" "https://registry.npmjs.org/@img/sharp-libvips-darwin-arm64/-/sharp-libvips-darwin-arm64-1.0.4.tgz"
+  "version" "1.0.4"
+
 "@internationalized/date@^3.5.4", "@internationalized/date@^3.5.6":
   "integrity" "sha512-jLxQjefH9VI5P9UQuqB6qNKnvFt1Ky1TPIzHGsIlCi7sZZoMR8SdYbBGRvM0y+Jtb+ez4ieBzmiAUcpmPYpyOw=="
   "resolved" "https://registry.npmjs.org/@internationalized/date/-/date-3.5.6.tgz"
@@ -2410,6 +2415,11 @@
     "@react-types/overlays" "^3.8.7"
     "@react-types/shared" "^3.23.1"
 
+"@remix-run/router@1.20.0":
+  "integrity" "sha512-mUnk8rPJBI9loFDZ+YzPGdeniYK+FTmRD1TMCz7ev2SNIozyKKpnGgsxO34u6Z4z/t0ITuu7voi/AshfsGsgFg=="
+  "resolved" "https://registry.npmjs.org/@remix-run/router/-/router-1.20.0.tgz"
+  "version" "1.20.0"
+
 "@rtsao/scc@^1.1.0":
   "integrity" "sha512-zt6OdqaDoOnJ1ZYsCYGt9YmWzDXl4vQdKTyJev62gFhRGKdx7mcT54V9KIjg+d2wi9EXsPvAPKe7i7WjfVWB8g=="
   "resolved" "https://registry.npmjs.org/@rtsao/scc/-/scc-1.1.0.tgz"
@@ -3540,7 +3550,7 @@
   "resolved" "https://registry.npmjs.org/delegates/-/delegates-1.0.0.tgz"
   "version" "1.0.0"
 
-"detect-libc@^2.0.0":
+"detect-libc@^2.0.0", "detect-libc@^2.0.3":
   "integrity" "sha512-bwy0MGW55bG41VqxxypOsdSdGqLwXPI/focwgTYCFMbdUiBAxLg9CFzG08sz2aqzknwiX7Hkl0bQENjg8iLByw=="
   "resolved" "https://registry.npmjs.org/detect-libc/-/detect-libc-2.0.3.tgz"
   "version" "2.0.3"
@@ -5797,6 +5807,21 @@
     "use-callback-ref" "^1.3.0"
     "use-sidecar" "^1.1.2"
 
+"react-router-dom@^6.27.0":
+  "integrity" "sha512-+bvtFWMC0DgAFrfKXKG9Fc+BcXWRUO1aJIihbB79xaeq0v5UzfvnM5houGUm1Y461WVRcgAQ+Clh5rdb1eCx4g=="
+  "resolved" "https://registry.npmjs.org/react-router-dom/-/react-router-dom-6.27.0.tgz"
+  "version" "6.27.0"
+  dependencies:
+    "@remix-run/router" "1.20.0"
+    "react-router" "6.27.0"
+
+"react-router@6.27.0":
+  "integrity" "sha512-YA+HGZXz4jaAkVoYBE98VQl+nVzI+cVI2Oj/06F5ZM+0u3TgedN9Y9kmMRo2mnkSK2nCpNQn0DVob4HCsY/WLw=="
+  "resolved" "https://registry.npmjs.org/react-router/-/react-router-6.27.0.tgz"
+  "version" "6.27.0"
+  dependencies:
+    "@remix-run/router" "1.20.0"
+
 "react-select@^5.8.1":
   "integrity" "sha512-RT1CJmuc+ejqm5MPgzyZujqDskdvB9a9ZqrdnVLsvAHjJ3Tj0hELnLeVPQlmYdVKCdCpxanepl6z7R5KhXhWzg=="
   "resolved" "https://registry.npmjs.org/react-select/-/react-select-5.8.1.tgz"
@@ -6050,6 +6075,35 @@
     "inherits" "^2.0.1"
     "safe-buffer" "^5.0.1"
 
+"sharp@^0.33.5":
+  "integrity" "sha512-haPVm1EkS9pgvHrQ/F3Xy+hgcuMV0Wm9vfIBSiwZ05k+xgb0PkBQpGsAA/oWdDobNaZTH5ppvHtzCFbnSEwHVw=="
+  "resolved" "https://registry.npmjs.org/sharp/-/sharp-0.33.5.tgz"
+  "version" "0.33.5"
+  dependencies:
+    "color" "^4.2.3"
+    "detect-libc" "^2.0.3"
+    "semver" "^7.6.3"
+  optionalDependencies:
+    "@img/sharp-darwin-arm64" "0.33.5"
+    "@img/sharp-darwin-x64" "0.33.5"
+    "@img/sharp-libvips-darwin-arm64" "1.0.4"
+    "@img/sharp-libvips-darwin-x64" "1.0.4"
+    "@img/sharp-libvips-linux-arm" "1.0.5"
+    "@img/sharp-libvips-linux-arm64" "1.0.4"
+    "@img/sharp-libvips-linux-s390x" "1.0.4"
+    "@img/sharp-libvips-linux-x64" "1.0.4"
+    "@img/sharp-libvips-linuxmusl-arm64" "1.0.4"
+    "@img/sharp-libvips-linuxmusl-x64" "1.0.4"
+    "@img/sharp-linux-arm" "0.33.5"
+    "@img/sharp-linux-arm64" "0.33.5"
+    "@img/sharp-linux-s390x" "0.33.5"
+    "@img/sharp-linux-x64" "0.33.5"
+    "@img/sharp-linuxmusl-arm64" "0.33.5"
+    "@img/sharp-linuxmusl-x64" "0.33.5"
+    "@img/sharp-wasm32" "0.33.5"
+    "@img/sharp-win32-ia32" "0.33.5"
+    "@img/sharp-win32-x64" "0.33.5"
+
 "shebang-command@^2.0.0":
   "integrity" "sha512-kHxr2zZpYtdmrN1qDjrrX/Z1rR1kG8Dx+gkpK1G4eXmvXswmcE1hTWBWYUzlraYw1/yZp6YuDY77YtvbN0dmDA=="
   "resolved" "https://registry.npmjs.org/shebang-command/-/shebang-command-2.0.0.tgz"
@@ -6107,6 +6161,18 @@
   "integrity" "sha512-94hK0Hh8rPqQl2xXc3HsaBoOXKV20MToPkcXvwbISWLEs+64sBq5kFgn2kJDHb1Pry9yrP0dxrCI9RRci7RXKg=="
   "resolved" "https://registry.npmjs.org/smart-buffer/-/smart-buffer-4.2.0.tgz"
   "version" "4.2.0"
+
+"smartcrop-sharp@^2.0.8":
+  "integrity" "sha512-0rpK/ddGAx7ou6YqqvJRkw/xyR4qgqmJeUQ2EWDnN3hSuJUk4InPGE6Sa45+TYOfGEEQJrchjF1ujBPMhoe9iA=="
+  "resolved" "https://registry.npmjs.org/smartcrop-sharp/-/smartcrop-sharp-2.0.8.tgz"
+  "version" "2.0.8"
+  dependencies:
+    "smartcrop" "^2.0.5"
+
+"smartcrop@^2.0.5":
+  "integrity" "sha512-aXoHTM8XlC51g96kgZkYxZ2mx09/ibOrIVLiUNOFozV/MHmFSgEr1/5CKVBoFD5vd+re2wSy0xra21CyjRITzA=="
+  "resolved" "https://registry.npmjs.org/smartcrop/-/smartcrop-2.0.5.tgz"
+  "version" "2.0.5"
 
 "socks-proxy-agent@^6.0.0":
   "integrity" "sha512-a6KW9G+6B3nWZ1yB8G7pJwL3ggLy1uTzKAgCb7ttblwqdz9fMGJUuTy3uFzEP48FAs9FLILlmzDlE2JJhVQaXQ=="
