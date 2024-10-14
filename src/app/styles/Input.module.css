@@ -1,0 +1,244 @@
+.inputWrapper {
+  width: 100%;
+  margin-bottom: var(--spacing-md);
+  position: relative;
+}
+
+.label {
+  display: block;
+  margin-bottom: var(--spacing-sm);
+  font-size: var(--medium-size);
+  color: var(--text);
+}
+
+.inputContainer {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input {
+  width: 100%;
+  padding: 12px;
+  font-size: var(--small-size);
+  border: 1px solid var(--input-border);
+  border-radius: var(--border-radius);
+  background-color: var(--input-bg);
+  color: var(--text);
+  transition: all 0.3s ease;
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--input-border-focus);
+  background-color: var(--input-bg-focus);
+}
+
+.input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.input::placeholder {
+  color: var(--text-lightest);
+}
+
+.icon,
+.addon {
+  position: absolute;
+  color: var(--text-lighter);
+}
+
+.iconLeft,
+.addonLeft {
+  left: var(--spacing-sm);
+}
+
+.iconRight,
+.addonRight {
+  right: var(--spacing-sm);
+}
+
+.input.hasIconLeft {
+  padding-left: calc(var(--spacing-sm) * 2 + 1em);
+}
+
+.input.hasIconRight {
+  padding-right: calc(var(--spacing-sm) * 2 + 1em);
+}
+
+.input.hasAddonLeft {
+  padding-left: calc(var(--spacing-sm) * 2 + 4em);
+}
+
+.input.hasAddonRight {
+  padding-right: calc(var(--spacing-sm) * 2 + 4em);
+}
+
+.errorMessage {
+  color: var(--error);
+  font-size: var(--small-size);
+  margin-top: var(--spacing-xs);
+}
+
+/* Floating label styles */
+.floatingLabel .label {
+  position: absolute;
+  top: 50%;
+  left: var(--spacing-sm);
+  transform: translateY(-50%);
+  transition: all 0.3s ease;
+  pointer-events: none;
+}
+
+.floatingLabel .input:focus + .label,
+.floatingLabel .input.hasValue + .label {
+  top: 0;
+  font-size: var(--small-size);
+  background-color: var(--bg);
+  padding: 0 var(--spacing-xs);
+}
+
+/* Textarea specific styles */
+textarea.input {
+  resize: vertical;
+  min-height: 100px;
+}
+
+/* Character count styles */
+.characterCount {
+  position: absolute;
+  right: var(--spacing-sm);
+  bottom: var(--spacing-xs);
+  font-size: var(--small-size);
+  color: var(--text-lighter);
+}
+
+/* File upload styles */
+.fileUpload {
+  width: 100%;
+}
+
+.dropzone {
+  border: 2px dashed var(--input-border);
+  border-radius: var(--border-radius);
+  padding: var(--spacing-md);
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.dropzone.active {
+  border-color: var(--accent);
+  background-color: var(--bg-lighter);
+}
+
+.uploadIcon {
+  font-size: 2rem;
+  color: var(--text-lighter);
+  margin-bottom: var(--spacing-sm);
+}
+
+.filePreview {
+  margin-top: var(--spacing-md);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+}
+
+.fileItem {
+  position: relative;
+  width: 100px;
+  height: 100px;
+  border: 1px solid var(--input-border);
+  border-radius: var(--border-radius);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.imagePreview {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: cover;
+}
+
+.removeFile {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  background: rgba(0, 0, 0, 0.5);
+  border: none;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  cursor: pointer;
+}
+
+/* Dark theme styles */
+[data-theme="dark"] .dropzone {
+  background-color: var(--bg-lighter);
+}
+
+[data-theme="dark"] .dropzone.active {
+  background-color: var(--bg-lightest);
+}
+
+[data-theme="dark"] .fileItem {
+  background-color: var(--bg-lighter);
+}
+
+[data-theme="dark"] .removeFile {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Loading state */
+.loader {
+  position: absolute;
+  right: var(--spacing-sm);
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--accent);
+  border-top: 2px solid transparent;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Clear button */
+.clearButton {
+  position: absolute;
+  right: var(--spacing-sm);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-lighter);
+}
+
+/* Select styles */
+.selectWrapper {
+  position: relative;
+  width: 100%;
+}
+
+.selectIcon {
+  position: absolute;
+  right: var(--spacing-sm);
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: var(--text-lighter);
+}

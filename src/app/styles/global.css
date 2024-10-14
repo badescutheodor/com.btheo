@@ -95,33 +95,6 @@ a:focus {
   text-decoration: none;
 }
 
-/* Form Elements */
-input[type="text"],
-input[type="email"],
-input[type="password"],
-input[type="number"],
-input[type="date"],
-textarea {
-  background-color: var(--bg);
-  color: var(--text);
-  border: 1px solid var(--accent);
-  border-radius: var(--border-radius);
-  padding: var(--spacing-sm);
-  font-size: var(--base-font-size);
-  transition: border-color 0.3s ease, box-shadow 0.3s ease;
-}
-
-input[type="text"]:focus,
-input[type="email"]:focus,
-input[type="password"]:focus,
-input[type="number"]:focus,
-input[type="date"]:focus,
-textarea:focus {
-  outline: none;
-  border-color: var(--btn-bg);
-  box-shadow: 0 0 0 2px rgba(var(--accent), 0.25);
-}
-
 /* React-Select Styles */
 .react-select__control {
   background-color: var(--bg);
@@ -501,7 +474,8 @@ textarea:focus {
 
 .admin-nav li span {
   display: none;
-  margin-left: var(--spacing-sm);
+  margin-left: var(--spacing-lg);
+  font-size: var(--medium-size);
   opacity: 0;
   transition: opacity 0.3s ease;
   white-space: nowrap;

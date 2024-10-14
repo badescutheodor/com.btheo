@@ -1,0 +1,73 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.overlay.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.modal {
+  position: relative;
+  background-color: var(--bg);
+  color: var(--text);
+  border-radius: var(--border-radius);
+  transition: transform 0.3s ease;
+  transform: scale(0.95);
+  max-width: 90%;
+  max-height: 90%;
+  overflow-y: auto;
+}
+
+.modal.open {
+  transform: scale(1);
+}
+
+.modalContent {
+  padding: var(--spacing-lg);
+}
+
+.modalTitle {
+  font-size: var(--h4-size);
+  margin-bottom: var(--spacing-xs);
+  margin-top: 0;
+}
+
+.modalBody {
+  margin-bottom: var(--spacing-lg);
+  min-width: 450px;
+}
+
+.closeButton {
+  position: absolute;
+  top: 25px;
+  right: 1.5rem;
+  background-color: transparent;
+  border: none;
+  color: var(--text);
+  font-size: var(--h5-size);
+  cursor: pointer;
+  padding: var(--spacing-xs);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.3s ease;
+}
+
+.closeButton:hover {
+  color: var(--accent);
+}
+
+/* Dark mode styles */
+:global([data-theme="dark"]) .modal {
+  background-color: var(--bg-darker);
+}

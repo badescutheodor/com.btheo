@@ -1,0 +1,21 @@
+.formError {
+  background-color: var(--error-light);
+  color: var(--error-dark);
+  padding: var(--spacing-md);
+  border-radius: var(--border-radius);
+  margin-bottom: var(--spacing-md);
+}
+
+.formError h3 {
+  margin-top: 0;
+  font-size: var(--medium-size);
+}
+
+.formError ul {
+  margin: 0;
+  padding-left: var(--spacing-md);
+}
+
+.formError li {
+  margin-bottom: var(--spacing-xs);
+}

@@ -60,6 +60,7 @@
   --h4-size: clamp(1.4rem, 2.5vw, 1.8rem);
   --h5-size: clamp(1.2rem, 2vw, 1.5rem);
   --h6-size: clamp(1rem, 1.5vw, 1.2rem);
+  --medium-size: clamp(0.9rem, 1.5vw, 1rem);
   --small-size: clamp(0.8rem, 1vw, 0.9rem);
   --btn-font-size: clamp(0.9rem, 1.5vw, 1.1rem);
 

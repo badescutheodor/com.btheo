@@ -2,7 +2,7 @@
   display: flex;
   align-items: center;
   margin: 0 auto;
-  padding: 20px 0;
+  padding: 30px 0;
 }
 
 .navContainer {
@@ -25,6 +25,10 @@
 
 .navLinks a.active {
   font-weight: 500;
+}
+
+.navLinks a.active:hover {
+  color: currentColor;
 }
 
 .themeToggle {
@@ -68,7 +72,6 @@
   max-width: 180px;
   overflow: hidden;
   text-overflow: ellipsis;
-  margin-right: 10px;
 }
 
 .menuIcon {

@@ -1,3 +1,108 @@
 .featuredPosts {
-  margin-top: 50px;
+  margin-top: 90px;
+  margin-bottom: 50px;
+}
+
+.featuredPosts > h3 {
+  margin-bottom: 23px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+@media (min-width: 768px) {
+  .grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.post {
+  position: relative;
+  cursor: pointer;
+  padding: 4px; /* Increased from 3px to 4px */
+  border-radius: 0.85rem; /* Increased from 0.75rem */
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.post:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.08);
+}
+
+.postContent {
+  background-color: var(--bg);
+  padding: 1.5rem;
+  padding-top: 0.5rem;
+  border-radius: 0.7rem; /* Increased from 0.6rem */
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-sizing: border-box;
+  transition: background-color 0.3s ease;
+}
+
+.postTitle {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-bottom: 3rem;
+  color: var(--text);
+  transition: color 0.3s ease;
+}
+
+.viewsContainer {
+  display: flex;
+  align-items: center;
+  color: var(--text-lighter);
+  transition: color 0.3s ease;
+}
+
+.eyeIcon {
+  margin-right: 0.5rem;
+}
+
+.gradientPurplePink {
+  background: linear-gradient(to right, #a78bfa, #ec4899);
+}
+
+.gradientCyanBlue {
+  background: linear-gradient(to right, #22d3ee, #3b82f6);
+}
+
+.gradientYellowOrange {
+  background: linear-gradient(to right, #fbbf24, #f97316);
+}
+
+.post:hover .postContent {
+  background-color: var(--bg);
+}
+
+.post:hover.gradientPurplePink .postTitle {
+  background: linear-gradient(to right, #a78bfa, #ec4899);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.post:hover.gradientCyanBlue .postTitle {
+  background: linear-gradient(to right, #22d3ee, #3b82f6);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.post:hover.gradientYellowOrange .postTitle {
+  background: linear-gradient(to right, #fbbf24, #f97316);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.post:hover .viewsContainer {
+  color: var(--text-darker);
+  font-size: var(--smaller-size);
 }

@@ -2,12 +2,135 @@
 import React, { useState, useEffect } from "react";
 import { useUser } from "@/app/contexts/UserContext";
 import { useFileManagement } from "@/hooks/useFiles";
+import Modal from "@/app/components/Modal";
+import Input from "@/app/components/Input";
+import { useFormOperations, FormProvider } from "@/app/components/FormProvider";
+import AutoFormBuilder from "@/app/components/AutoFormBuilder";
+import FormError from "@/app/components/FormError";
 
 interface Setting {
   id: number;
   key: string;
   value: string;
 }
+
+import * as yup from "yup";
+
+const initialValues = {
+  name: "",
+  email: "",
+  age: "",
+  bio: "",
+  agreeTerms: false,
+  gender: "",
+  country: "",
+  birthdate: "",
+  avatar: null,
+};
+
+const validationSchema = {
+  name: {
+    type: "text",
+    rules: [yup.string().required("Name is required")],
+  },
+  email: {
+    type: "email",
+    rules: [yup.string().email("Invalid email").required("Email is required")],
+  },
+  age: {
+    type: "number",
+    rules: [
+      yup.number().required("Age is required"),
+      yup
+        .number()
+        .positive("Age must be positive")
+        .integer("Age must be an integer"),
+    ],
+  },
+  bio: {
+    type: "textarea",
+    rules: [yup.string().max(200, "Bio must be at most 200 characters")],
+  },
+  agreeTerms: {
+    type: "checkbox",
+    rules: [yup.boolean().oneOf([true], "You must agree to the terms")],
+  },
+  gender: {
+    type: "radio",
+    options: [
+      { value: "male", label: "Male" },
+      { value: "female", label: "Female" },
+      { value: "other", label: "Other" },
+    ],
+    rules: [yup.string().oneOf(["male", "female", "other"], "Invalid gender")],
+  },
+  country: {
+    type: "select",
+    options: [
+      { value: "us", label: "United States" },
+      { value: "ca", label: "Canada" },
+      { value: "uk", label: "United Kingdom" },
+    ],
+    rules: [yup.string().required("Country is required")],
+  },
+  birthdate: {
+    type: "date",
+    rules: [yup.date().required("Birthdate is required")],
+  },
+  avatar: {
+    type: "file",
+    rules: [
+      yup.mixed().test("fileSize", "File is too large", (value) => {
+        if (!value) return true;
+        return value[0]?.size <= 1024 * 1024; // 1MB
+      }),
+    ],
+  },
+};
+
+const ExampleForm: React.FC = () => {
+  const handleSubmit = (values: typeof initialValues) => {
+    console.log(values);
+    // Handle form submission
+  };
+
+  const FormActions = () => {
+    const { resetForm, submitForm, resetErrors, hasErrors, isSubmitting } =
+      useFormOperations();
+
+    return (
+      <div>
+        <button type="button" onClick={resetForm} disabled={isSubmitting}>
+          Reset Form
+        </button>
+        <button type="button" onClick={submitForm} disabled={isSubmitting}>
+          Custom Submit
+        </button>
+        <button
+          type="button"
+          onClick={resetErrors}
+          disabled={isSubmitting || !hasErrors}
+        >
+          Reset Errors
+        </button>
+        {isSubmitting && <p>Submitting...</p>}
+        {hasErrors && <p>There are errors in the form</p>}
+      </div>
+    );
+  };
+
+  return (
+    <FormProvider
+      initialValues={initialValues}
+      validationSchema={validationSchema}
+      onSubmit={handleSubmit}
+    >
+      <FormError />
+      <AutoFormBuilder schema={validationSchema} />
+      <FormActions />
+    </FormProvider>
+  );
+};
 
 const SettingsPage: React.FC = () => {
   const { user } = useUser();
@@ -115,8 +238,11 @@ const SettingsPage: React.FC = () => {
 
   return (
     <div>
+      {/* <Modal isOpen={true} title={"XXXX"} onClose={() => {}}>
+        <h1>XXXX</h1>
+      </Modal> */}
+      <ExampleForm />
       <h3>Settings Management</h3>
-
       <h2>Add New Setting</h2>
       <form onSubmit={handleAddSetting}>
         <input

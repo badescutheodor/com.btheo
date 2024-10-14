@@ -4,9 +4,10 @@
 }
 
 .dropdown a,
+.dropdown a:focus,
 .dropdown a:visited {
   text-decoration: none;
-  color: var(--text-lighter) !important;
+  color: var(--text-darker) !important;
 }
 
 .dropdown a:hover {
@@ -26,7 +27,7 @@
 }
 
 .dropdownToggle span {
-  margin-right: var(--spacing-sm);
+  margin-right: var(--spacing-xs);
 }
 
 .dropdownMenu {
@@ -55,7 +56,7 @@
 .dropdownItem {
   padding: var(--spacing-sm) var(--spacing-md);
   cursor: pointer;
-  color: var(--text-lighter) !important;
+  color: var(--text-darker) !important;
 }
 
 .dropdownItem:hover {

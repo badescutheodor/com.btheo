@@ -214,11 +214,11 @@
   display: flex;
   align-items: center;
   z-index: 1;
-  transition: 0.5s;
 }
 
 .button .button__mask + .button__text {
   color: var(--text);
+  transition: 0.5s;
 }
 
 .button--mask-1 .button__mask {
@@ -244,15 +244,15 @@
 
 /* Hover styles for masked buttons */
 .button--mask-1:hover .button__mask {
-  animation: mask-animation 0.7s steps(70) forwards;
+  animation: mask-animation 0.6s steps(70) forwards;
 }
 
 .button--mask-2:hover .button__mask {
-  animation: mask-animation 0.7s steps(29) forwards;
+  animation: mask-animation 0.6s steps(29) forwards;
 }
 
 .button--mask-3:hover .button__mask {
-  animation: mask-animation 0.7s steps(70) forwards;
+  animation: mask-animation 0.6s steps(70) forwards;
 }
 
 @keyframes mask-animation {
