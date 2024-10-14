@@ -107,3 +107,19 @@
   color: var(--text-darker);
   font-size: var(--smaller-size);
 }
+
+@media (max-width: 768px) {
+  .post.gradientPurplePink .postTitle {
+    background: linear-gradient(to right, #a78bfa, #ec4899);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .postContent {
+    border-radius: 0;
+  }
+  .post {
+    border-radius: 0;
+  }
+}

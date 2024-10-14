@@ -539,6 +539,11 @@ a:focus {
 }
 
 @media (max-width: 767px) {
+  .container {
+    padding-right: 30px;
+    padding-left: 30px;
+  }
+
   .full-width-sm {
     width: 100% !important;
   }
