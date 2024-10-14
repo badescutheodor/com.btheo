@@ -35,6 +35,8 @@ export default function LoginForm() {
       const { user } = await res.json();
       setUser(user);
       router.push("/");
+    } else {
+      return await res.json();
     }
   };
 

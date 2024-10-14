@@ -133,13 +133,13 @@ export const FormProvider: React.FC<FormProviderProps> = ({
     async (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault();
       setIsSubmitting(true);
+      let isValid = true;
       if (validationSchema) {
-        const isValid = await validateForm();
-        if (isValid) {
-          await onSubmit(values || {});
-        }
-      } else {
-        await onSubmit(values || {});
+        isValid = await validateForm();
+      }
+      if (isValid) {
+        const submitErrors: any = await onSubmit(values || {});
+        setErrors(submitErrors || {});
       }
       setIsSubmitting(false);
       setIsSubmitted(true);
