@@ -6,7 +6,7 @@ import { Alert } from "./Alert";
 const FormErrors: React.FC = () => {
   const [open, setOpen] = useState(true);
   const { errors, isSubmitted, resetSubmissionState } = useForm();
-  const errorMessages = Object.values(errors);
+  const errorMessages = Object.values(errors).filter((error) => error !== "");
 
   useEffect(() => {
     // Only open the alert if there are errors and the form has been submitted

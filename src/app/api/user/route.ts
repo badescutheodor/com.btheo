@@ -9,8 +9,11 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ message: 'Not authenticated' }, { status: 401 });
     }
 
-    const { userId }: any = await verifyToken(token);
-    const user = await getUserById(userId);
+    const { id }: any = await verifyToken(token);
+    const user = await getUserById(id);
+    
+    // @ts-ignore
+    delete user.password;
 
     if (!user) {
         return NextResponse.json({ message: 'Invalid token or unexisting user' }, { status: 401 });

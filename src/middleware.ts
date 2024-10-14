@@ -16,6 +16,8 @@ export async function middleware(request: NextRequest) {
     secret: process.env.JWT_SECRET || 'secret',
   }) : null;
 
+  console.log(user);
+
   if (request.nextUrl.pathname.startsWith('/admin')) {
     if (!user || user.role !== 'admin') {
       return NextResponse.redirect(new URL('/login', request.url));

@@ -550,6 +550,10 @@ a:focus {
 }
 
 @media (min-width: 768px) {
+  .border-radius-10-md {
+    border-radius: 10px;
+  }
+
   .visible-sm {
     display: none !important;
   }

@@ -30,15 +30,22 @@ export async function getUserById(id: number) {
 export async function validateUser(email: string, password: string) {
   const dataSource = await getDB();
   const userRepository = dataSource.getRepository(User);
-  const user = await userRepository.findOne({ where: { email } });
+  const user = await userRepository.findOne({
+     where: { email },  
+  });
+
   if (user && await compare(password, user.password)) {
+    // @ts-ignore
+    delete user.password;
     return user;
   }
   return null;
 }
 
 export async function generateToken(user: User) {
-  return await jwt.encode({ userId: user.id, email: user.email, role: user.role, name: user.name, avatar: user.avatar });
+  return await jwt.encode({
+    ...user
+  });
 }
 
 export async function verifyToken(token: string) {

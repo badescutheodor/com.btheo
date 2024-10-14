@@ -5,7 +5,7 @@ import { cookies } from 'next/headers'
 export async function POST(req: NextRequest, res: NextResponse) {
     const { email, password } = await req.json();
     const user = await validateUser(email, password);
-    
+
     if (user) {
         const token = await generateToken(user);
         cookies().set('token', token, {

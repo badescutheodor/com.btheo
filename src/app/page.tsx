@@ -21,7 +21,7 @@ export default async function Home() {
             size={"large"}
             icon={FiFileText}
             target={"_blank"}
-            className={"full-width-sm"}
+            className={"full-width-sm border-radius-10-md"}
             href={settings.resumeLink}
             maskAnimated={2}
           >

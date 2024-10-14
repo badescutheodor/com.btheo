@@ -31,7 +31,7 @@ export class User {
   @IsString()
   @MinLength(8)
   @MaxLength(100)
-  @Column({ select: false })
+  @Column()
   password: string;
 
   @Column()
