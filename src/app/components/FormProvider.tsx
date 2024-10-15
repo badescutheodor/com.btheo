@@ -4,6 +4,7 @@ import React, {
   useContext,
   useCallback,
   useMemo,
+  useEffect,
 } from "react";
 import * as yup from "yup";
 
@@ -43,6 +44,7 @@ interface FormProviderProps {
   initialValues?: Record<string, unknown>;
   validationSchema?: ValidationSchema;
   onSubmit: (values: Record<string, unknown>) => void;
+  enableEnterSubmit: boolean;
 }
 
 export const FormProvider: React.FC<FormProviderProps> = ({
@@ -50,6 +52,7 @@ export const FormProvider: React.FC<FormProviderProps> = ({
   initialValues,
   validationSchema,
   onSubmit,
+  enableEnterSubmit = true,
 }) => {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [values, setValues] = useState(initialValues || {});
@@ -146,6 +149,28 @@ export const FormProvider: React.FC<FormProviderProps> = ({
     },
     [validateForm, onSubmit, values]
   );
+
+  const handleKeyPress = useCallback(
+    (event: KeyboardEvent) => {
+      if (enableEnterSubmit && event.key === "Enter" && !event.shiftKey) {
+        const target = event.target as HTMLElement;
+        if (target.tagName !== "TEXTAREA") {
+          event.preventDefault();
+          submitForm(new Event("submit") as any);
+        }
+      }
+    },
+    [enableEnterSubmit, submitForm]
+  );
+
+  useEffect(() => {
+    if (enableEnterSubmit) {
+      document.addEventListener("keypress", handleKeyPress);
+      return () => {
+        document.removeEventListener("keypress", handleKeyPress);
+      };
+    }
+  }, [enableEnterSubmit, handleKeyPress]);
 
   const contextValue = useMemo(
     () => ({

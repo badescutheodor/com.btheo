@@ -4,6 +4,7 @@ import { Upload } from '@/lib/entities/Upload';
 import { getDB } from '@/lib/db';
 import { getSession } from '@/lib/auth';
 import { writeFile } from 'fs/promises';
+import { User } from '@/lib/entities/User';
 
 export async function POST(req: NextRequest) {
   const user = await getSession(req);
@@ -36,9 +37,10 @@ export async function POST(req: NextRequest) {
     const uploadRepository = db.getRepository(Upload);
     const upload = {
       filename: fileName,
-      user: { id: user.userId },
+      user: { id: user.id } as User,
       path: `/uploads/${uniqueName}`,
       type,
+      createdAt: new Date()
     };
 
     const newUpload = uploadRepository.create(upload);
