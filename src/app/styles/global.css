@@ -1071,21 +1071,23 @@ a:focus {
 
 /* New Breakpoint Helpers */
 
-/* Extra Small (xs) - Base styles, no media query needed */
-.full-width-xs {
-  width: 100% !important;
-}
+@media (max-width: 576px) {
+  /* Extra Small (xs) - Base styles, no media query needed */
+  .full-width-xs {
+    width: 100% !important;
+  }
 
-.mt-0-xs {
-  margin-top: 0 !important;
-}
+  .mt-0-xs {
+    margin-top: 0 !important;
+  }
 
-.pt-0-xs {
-  padding-top: 0 !important;
+  .pt-0-xs {
+    padding-top: 0 !important;
+  }
 }
 
 /* Small (sm) */
-@media (min-width: 576px) {
+@media (min-width: 576px) and (max-width: 767px) {
   .full-width-sm {
     width: 100% !important;
   }
@@ -1100,7 +1102,7 @@ a:focus {
 }
 
 /* Medium (md) */
-@media (min-width: 768px) {
+@media (min-width: 768px) and (max-width: 991px) {
   .full-width-md {
     width: 100% !important;
   }
@@ -1115,7 +1117,7 @@ a:focus {
 }
 
 /* Large (lg) */
-@media (min-width: 992px) {
+@media (min-width: 992px) and (max-width: 1199px) {
   .full-width-lg {
     width: 100% !important;
   }

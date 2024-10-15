@@ -68,7 +68,7 @@ export default function GuestbookForm({ createGuestbook }: any) {
                     <Button
                       type="submit"
                       onClick={submitForm}
-                      className={"full-width-sm"}
+                      className={"full-width-sm pv-md-2"}
                     >
                       Sign Guestbook
                     </Button>
