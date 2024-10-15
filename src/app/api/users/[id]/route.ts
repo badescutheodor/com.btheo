@@ -38,7 +38,7 @@ export async function PUT(req: NextRequest, { params }: any) {
 
   const errors = await User.validate(user);
     
-  if (errors.length > 0) {
+  if (Object.keys(errors).length > 0) {
     return NextResponse.json({ errors }, { status: 400 });
   }
 

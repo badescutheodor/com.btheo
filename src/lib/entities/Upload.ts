@@ -1,5 +1,5 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne } from "typeorm";
-import { IsNotEmpty, IsString, IsDate, MaxLength, ValidateNested, validate } from "class-validator";
+import { IsNotEmpty, IsString, IsDate, MaxLength, validate, ValidationError } from "class-validator";
 import { Type, plainToClass } from "class-transformer";
 import { User } from "./User";
 import type { Relation } from "typeorm";
@@ -35,9 +35,15 @@ export class Upload {
   @IsDate()
   createdAt: Date;
 
-  static async validate(uploadData: Partial<Upload>): Promise<string[]> {
-    const upload = plainToClass(Upload, uploadData);
-    const errors = await validate(upload);
-    return errors.map(error => Object.values(error.constraints || {}).join(', '));
-  }
+  static async validate(entryData: Partial<Upload>): Promise<{ [key: string]: string[] }> {
+    const entry = plainToClass(Upload, entryData);
+    const errors = await validate(entry);
+    
+    return errors.reduce((acc, error: ValidationError) => {
+      if (error.property && error.constraints) {
+        acc[error.property] = Object.values(error.constraints);
+      }
+      return acc;
+    }, {} as { [key: string]: string[] });
+} 
 }

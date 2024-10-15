@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
 
     const errors = await Label.validate(reqBody);
     
-    if (errors.length > 0) {
+    if (Object.keys(errors).length > 0) {
       return NextResponse.json({ errors }, { status: 400 });
     }
 
@@ -95,7 +95,7 @@ export async function DELETE(req: NextRequest) {
     const db = await getDB();
 
     try {
-        const labelRepository = getRepository(Label);
+        const labelRepository = db.getRepository(Label);
         const { id } = await req.json();
 
         let label = await labelRepository.findOne({ where: { id } });

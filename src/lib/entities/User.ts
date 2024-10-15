@@ -1,5 +1,5 @@
 import { Entity, PrimaryGeneratedColumn, Column, OneToMany, OneToOne, JoinColumn } from "typeorm";
-import { IsNotEmpty, IsString, IsEmail, MinLength, MaxLength, IsOptional, ValidateNested, IsEnum, validate } from "class-validator";
+import { IsNotEmpty, IsString, IsEmail, MinLength, MaxLength, IsOptional, ValidateNested, IsEnum, validate, ValidationError } from "class-validator";
 import { Type, plainToClass } from "class-transformer";
 import { BlogPost } from "./BlogPost";
 import { Snippet } from "./Snippet";
@@ -54,16 +54,21 @@ export class User {
   @OneToOne(() => Upload, { nullable: true })
   @JoinColumn()
   @IsOptional()
-  @ValidateNested()
   @Type(() => Upload)
   avatar: Relation<Upload>;
 
   @OneToMany(() => Upload, upload => upload.user)
   uploads: Relation<Upload>[];
 
-  static async validate(userData: Partial<User>): Promise<string[]> {
-    const user = plainToClass(User, userData);
-    const errors = await validate(user);
-    return errors.map(error => Object.values(error.constraints || {}).join(', '));
-  }
+  static async validate(entryData: Partial<User>): Promise<{ [key: string]: string[] }> {
+    const entry = plainToClass(User, entryData);
+    const errors = await validate(entry);
+    
+    return errors.reduce((acc, error: ValidationError) => {
+      if (error.property && error.constraints) {
+        acc[error.property] = Object.values(error.constraints);
+      }
+      return acc;
+    }, {} as { [key: string]: string[] });
+} 
 }

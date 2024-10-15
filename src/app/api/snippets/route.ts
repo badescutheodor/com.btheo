@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
         const { title, content, language, isFeatured, labelIds } = reqBody;
         const errors = await Snippet.validate(reqBody);
         
-        if (errors.length > 0) {
+        if (Object.keys(errors).length > 0) {
           return NextResponse.json({ errors }, { status: 400 });
         }
 
@@ -97,7 +97,7 @@ export async function PUT(req: NextRequest) {
       
       const errors = await Snippet.validate(snippet);
       
-      if (errors.length > 0) {
+      if (Object.keys(errors).length > 0) {
         return NextResponse.json({ errors }, { status: 400 });
       }
   
@@ -143,6 +143,7 @@ export async function DELETE(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
     try {
       const user = await getSession(req);
+      
       if (!user) {
         return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
       }

@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
 
     const errors = await GuestbookEntry.validate(reqBody);
     
-    if (errors.length > 0) {
+    if (Object.keys(errors).length) {
       return NextResponse.json({ errors }, { status: 400 });
     }
 

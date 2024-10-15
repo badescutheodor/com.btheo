@@ -1,5 +1,5 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne } from "typeorm";
-import { IsNotEmpty, IsString, IsDate, ValidateNested, MaxLength, IsEmail, IsOptional, IsUrl, validate } from "class-validator";
+import { IsNotEmpty, IsString, IsDate, ValidateNested, MaxLength, IsEmail, IsOptional, IsUrl, validate, ValidationError } from "class-validator";
 import { Type, plainToClass } from "class-transformer";
 import { BlogPost } from "./BlogPost";
 import type { Relation } from "typeorm";
@@ -42,9 +42,15 @@ export class Comment {
     @IsDate()
     createdAt: Date;
 
-    static async validate(commentData: Partial<Comment>): Promise<string[]> {
-        const comment = plainToClass(Comment, commentData);
-        const errors = await validate(comment);
-        return errors.map(error => Object.values(error.constraints || {}).join(', '));
-    }
+    static async validate(entryData: Partial<Comment>): Promise<{ [key: string]: string[] }> {
+        const entry = plainToClass(Comment, entryData);
+        const errors = await validate(entry);
+        
+        return errors.reduce((acc, error: ValidationError) => {
+          if (error.property && error.constraints) {
+            acc[error.property] = Object.values(error.constraints);
+          }
+          return acc;
+        }, {} as { [key: string]: string[] });
+    } 
 }

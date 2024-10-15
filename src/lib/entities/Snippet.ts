@@ -1,5 +1,5 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, ManyToMany, JoinTable } from "typeorm";
-import { IsNotEmpty, IsString, IsBoolean, MaxLength, ArrayNotEmpty, ValidateNested, IsOptional, validate } from "class-validator";
+import { IsNotEmpty, IsString, IsBoolean, MaxLength, ArrayNotEmpty, ValidateNested, IsOptional, validate, ValidationError } from "class-validator";
 import { Type, plainToClass } from "class-transformer";
 import { User } from "./User";
 import { Label } from "./Label";
@@ -44,9 +44,15 @@ export class Snippet {
   @Type(() => Label)
   labels: Label[];
 
-  static async validate(snippetData: Partial<Snippet>): Promise<string[]> {
-    const snippet = plainToClass(Snippet, snippetData);
-    const errors = await validate(snippet);
-    return errors.map(error => Object.values(error.constraints || {}).join(', '));
-  }
+  static async validate(entryData: Partial<Snippet>): Promise<{ [key: string]: string[] }> {
+    const entry = plainToClass(Snippet, entryData);
+    const errors = await validate(entry);
+    
+    return errors.reduce((acc, error: ValidationError) => {
+      if (error.property && error.constraints) {
+        acc[error.property] = Object.values(error.constraints);
+      }
+      return acc;
+    }, {} as { [key: string]: string[] });
+} 
 }

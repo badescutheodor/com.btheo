@@ -1,5 +1,5 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, ManyToMany, JoinTable, OneToMany, CreateDateColumn } from "typeorm";
-import { IsNotEmpty, IsString, IsDate, IsInt, Min, IsBoolean, IsUrl, IsOptional, ValidateNested, ArrayMinSize, validate } from "class-validator";
+import { IsNotEmpty, IsString, IsDate, IsInt, Min, IsBoolean, IsUrl, IsOptional, ValidateNested, ArrayMinSize, validate, ValidationError } from "class-validator";
 import { Type, plainToClass } from "class-transformer";
 import type { Relation } from "typeorm";
 import { User } from "./User";
@@ -94,9 +94,15 @@ export class BlogPost {
   @Type(() => MetaTags)
   metaTags: MetaTags;
 
-  static async validate(blogPostData: Partial<BlogPost>): Promise<string[]> {
-    const blogPost = plainToClass(BlogPost, blogPostData);
-    const errors = await validate(blogPost);
-    return errors.map((error: any) => Object.values(error.constraints || {}).join(', '));
-  }
+  static async validate(entryData: Partial<BlogPost>): Promise<{ [key: string]: string[] }> {
+    const entry = plainToClass(BlogPost, entryData);
+    const errors = await validate(entry);
+    
+    return errors.reduce((acc, error: ValidationError) => {
+      if (error.property && error.constraints) {
+        acc[error.property] = Object.values(error.constraints);
+      }
+      return acc;
+    }, {} as { [key: string]: string[] });
+} 
 }

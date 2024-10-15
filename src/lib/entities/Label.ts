@@ -1,5 +1,5 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToMany } from "typeorm";
-import { IsNotEmpty, IsString, MaxLength, Matches, validate } from "class-validator";
+import { IsNotEmpty, IsString, MaxLength, Matches, validate, ValidationError  } from "class-validator";
 import { plainToClass } from "class-transformer";
 import { BlogPost } from "./BlogPost";
 import { Snippet } from "./Snippet";
@@ -30,9 +30,15 @@ export class Label {
   @ManyToMany(() => Snippet, (snippet) => snippet.labels)
   snippets: Snippet[];
 
-  static async validate(labelData: Partial<Label>): Promise<string[]> {
-    const label = plainToClass(Label, labelData);
-    const errors = await validate(label);
-    return errors.map(error => Object.values(error.constraints || {}).join(', '));
-  }
+  static async validate(entryData: Partial<Label>): Promise<{ [key: string]: string[] }> {
+    const entry = plainToClass(Label, entryData);
+    const errors = await validate(entry);
+    
+    return errors.reduce((acc, error: ValidationError) => {
+      if (error.property && error.constraints) {
+        acc[error.property] = Object.values(error.constraints);
+      }
+      return acc;
+    }, {} as { [key: string]: string[] });
+} 
 }

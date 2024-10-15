@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
     const newUpload = uploadRepository.create(upload);
     const errors = await Upload.validate(newUpload);
     
-    if (errors.length > 0) {
+    if (Object.keys(errors).length > 0) {
       return NextResponse.json({ errors }, { status: 400 });
     }
 

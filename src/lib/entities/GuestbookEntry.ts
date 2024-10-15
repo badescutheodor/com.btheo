@@ -65,5 +65,5 @@ export class GuestbookEntry {
           }
           return acc;
         }, {} as { [key: string]: string[] });
-      }
+    } 
 }

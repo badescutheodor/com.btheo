@@ -33,12 +33,14 @@ export async function POST(req: NextRequest, res: NextResponse) {
       email,
       password: hashedPassword,
       role,
-      avatar: userAvatar?.id,
+      avatar: {
+        id: userAvatar ? userAvatar.id : null
+      }
     });
 
     const errors = await User.validate(newUser);
     
-    if (errors.length > 0) {
+    if (Object.keys(errors).length > 0) {
       return NextResponse.json({ errors }, { status: 400 });
     }
 

@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
         const { key, value } = reqBody;
         const errors = await Setting.validate(reqBody);
         
-        if (errors.length > 0) {
+        if (Object.keys(errors).length > 0) {
           return NextResponse.json({ errors }, { status: 400 });
         }
 
@@ -79,7 +79,7 @@ export async function PUT(req: NextRequest) {
 
       const errors = await Setting.validate(setting);
       
-      if (errors.length > 0) {
+      if (Object.keys(errors).length > 0) {
         return NextResponse.json({ errors }, { status: 400 });
       }
 
