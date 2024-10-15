@@ -11,7 +11,7 @@ export default function GuestbookForm({ createGuestbook }: any) {
   };
 
   return (
-    <div className="guestbook">
+    <div className="mb-xl">
       <FormProvider
         validationSchema={{
           name: {
@@ -35,25 +35,46 @@ export default function GuestbookForm({ createGuestbook }: any) {
                 schema={{
                   name: {
                     type: "text",
-                    label: "Name",
+                    label: "Name *",
                     required: true,
                     autoFocus: true,
-                    size: "col-lg-2 col-sm-12",
+                    size: "col-lg-6 col-md-12 col-xs-12",
                     row: 1,
+                  },
+                  email: {
+                    type: "email",
+                    label: "Email",
+                    size: "col-lg-3 col-md-6 col-xs-12",
+                    row: 2,
+                  },
+                  website: {
+                    type: "text",
+                    label: "Website",
+                    size: "col-lg-3 col-md-6 col-xs-12",
+                    row: 2,
                   },
                   message: {
                     type: "textarea",
-                    label: "Message",
-                    required: true,
-                    size: "col-lg-6 col-sm-12",
+                    label: "Message *",
+                    size: "col-lg-6 col-md-12 col-xs-12",
                     maxLength: 500,
-                    row: 2,
+                    row: 4,
                   },
                 }}
               />
-              <Button type="submit" onClick={submitForm}>
-                Send Message
-              </Button>
+              <div className="row">
+                <div className="col-lg-6 col-md-6 col-xs-12">
+                  <div>
+                    <Button
+                      type="submit"
+                      onClick={submitForm}
+                      className={"full-width-sm"}
+                    >
+                      Sign Guestbook
+                    </Button>
+                  </div>
+                </div>
+              </div>
             </>
           );
         }}

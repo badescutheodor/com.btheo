@@ -33,9 +33,7 @@ export async function POST(req: NextRequest, res: NextResponse) {
       email,
       password: hashedPassword,
       role,
-      avatar: {
-        id: userAvatar ? userAvatar.id : null
-      }
+      avatar: userAvatar ? userAvatar : null
     });
 
     const errors = await User.validate(newUser);
