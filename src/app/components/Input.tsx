@@ -111,7 +111,7 @@ const Input: React.FC<InputProps> = React.memo(
     const handleFocus = () => {
       setIsFocused(true);
       if (!isControlled) {
-        //formContext?.setFieldTouched(name, true);
+        formContext?.setFieldTouched(name, true);
       }
     };
 
@@ -122,7 +122,7 @@ const Input: React.FC<InputProps> = React.memo(
       } else {
         setTimeout(() => {
           formContext?.setFieldTouched(name, true);
-          formContext?.validateField(name);
+          formContext?.validateField(name, value);
         }, 200);
       }
     };
@@ -132,7 +132,10 @@ const Input: React.FC<InputProps> = React.memo(
         propOnChange(newValue);
       } else {
         formContext?.setFieldValue(name, newValue);
-        touched && newValue && formContext?.validateField(name);
+        if (!touched) {
+          formContext?.setFieldTouched(name, true);
+        }
+        touched && formContext?.validateField(name, newValue);
       }
     };
 

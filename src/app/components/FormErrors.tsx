@@ -1,11 +1,19 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import { useForm } from "./FormProvider";
 import styles from "@/app/styles/FormErrors.module.css";
 import { Alert } from "./Alert";
+import cx from "classnames";
 
-const FormErrors: React.FC = () => {
+type FormErrorsProps = {
+  className?: string;
+  afterSubmit?: boolean;
+  size?: string;
+};
+
+const FormErrors = ({ className, size, afterSubmit }: FormErrorsProps) => {
   const [open, setOpen] = useState(true);
-  const { errors, isSubmitted, resetSubmissionState } = useForm();
+  const { errors, isSubmitted, resetSubmissionState, serverValidationFailed } =
+    useForm();
   const errorMessages = Object.values(errors).filter((error) => error !== "");
 
   useEffect(() => {
@@ -19,13 +27,17 @@ const FormErrors: React.FC = () => {
     return null;
   }
 
+  if (isSubmitted && !serverValidationFailed) {
+    return null;
+  }
+
   const handleClose = () => {
     setOpen(false);
     resetSubmissionState(); // Reset the submission state when closing the alert
   };
 
-  return (
-    <div className={styles.formErrors}>
+  const FormAlert = (
+    <div className={cx(styles.formErrors, className)}>
       <Alert type="error" open={open} onClose={handleClose}>
         <h6>Please correct the following errors:</h6>
         <ul>
@@ -36,6 +48,16 @@ const FormErrors: React.FC = () => {
       </Alert>
     </div>
   );
+
+  if (size) {
+    return (
+      <div className="row">
+        <div className={size}>{FormAlert}</div>
+      </div>
+    );
+  }
+
+  return FormAlert;
 };
 
 export default FormErrors;

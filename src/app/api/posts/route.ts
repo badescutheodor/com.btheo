@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
     });
 
     return NextResponse.json(blogPosts);
-  } catch (error) {
+  } catch {
     return NextResponse.json({ message: 'Error fetching blog posts' }, { status: 500 });
   }
 }
@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
       readTime,
       excerpt,
       isFeatured,
-      author: { id: user.userId },
+      author: { id: user.id },
       labels,
       slug: title.toLowerCase().replace(/ /g, '-'),
       metaTags: metaTags || {},

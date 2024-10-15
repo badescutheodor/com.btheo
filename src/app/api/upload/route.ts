@@ -32,8 +32,6 @@ export async function POST(req: NextRequest) {
     const uniqueName = `${Date.now()}.${ext}`;
     const filePath = path.join(process.cwd(), 'public', 'uploads', uniqueName);
 
-    await writeFile(filePath, buffer);
-
     const uploadRepository = db.getRepository(Upload);
     const upload = {
       filename: fileName,
@@ -50,8 +48,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ errors }, { status: 400 });
     }
 
+    await writeFile(filePath, buffer);
     await uploadRepository.save(newUpload);
-
     return NextResponse.json(newUpload);
   } catch (error) {
     console.error('Error uploading file:', error);

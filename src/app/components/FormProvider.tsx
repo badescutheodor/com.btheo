@@ -16,7 +16,9 @@ export interface ValidationSchema {
   [key: string]: {
     rules?: ValidationRule[];
     type?: string;
+    size?: string;
     options?: { value: string; label: string }[];
+    row?: number;
     [key: string]: unknown;
   };
 }
@@ -28,13 +30,16 @@ interface FormContextType {
   isSubmitting: boolean;
   setFieldValue: (name: string, value: unknown) => void;
   setFieldTouched: (name: string, isTouched: boolean) => void;
-  validateField: (name: string) => Promise<void>;
+  validateField: (name: string, value: unknown) => Promise<void>;
   validateForm: () => Promise<boolean>;
   resetForm: () => void;
   resetErrors: () => void;
   submitForm: (e: React.FormEvent<HTMLFormElement>) => Promise<void>;
   isSubmitted: boolean;
+  done: boolean;
   resetSubmissionState: () => void;
+  clientValidationFailed: boolean;
+  serverValidationFailed: boolean;
 }
 
 const FormContext = createContext<FormContextType | undefined>(undefined);
@@ -44,7 +49,7 @@ interface FormProviderProps {
   initialValues?: Record<string, unknown>;
   validationSchema?: ValidationSchema;
   onSubmit: (values: Record<string, unknown>) => void;
-  enableEnterSubmit: boolean;
+  enableEnterSubmit?: boolean;
 }
 
 export const FormProvider: React.FC<FormProviderProps> = ({
@@ -59,8 +64,10 @@ export const FormProvider: React.FC<FormProviderProps> = ({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [clientValidationFailed, setClientValidationFailed] = useState(false);
+  const [serverValidationFailed, setServerValidationFailed] = useState(false);
 
-  const setFieldValue = useCallback((name: string, value: any) => {
+  const setFieldValue = useCallback((name: string, value: unknown) => {
     setValues((prevValues) => ({ ...prevValues, [name]: value }));
   }, []);
 
@@ -69,19 +76,23 @@ export const FormProvider: React.FC<FormProviderProps> = ({
   }, []);
 
   const validateField = useCallback(
-    async (name: string) => {
+    async (name: string, value: any) => {
       const fieldSchema = validationSchema?.[name];
       if (!fieldSchema) return;
-
       try {
         for (const rule of fieldSchema.rules || []) {
           if (typeof rule === "function") {
-            await rule(values[name]);
+            await rule(value);
           } else {
-            await rule.validate(values[name]);
+            await rule.validate(value);
           }
         }
-        setErrors((prevErrors) => ({ ...prevErrors, [name]: "" }));
+
+        setErrors((prevErrors) => {
+          const newErrors = { ...prevErrors };
+          delete newErrors[name];
+          return newErrors;
+        });
       } catch (error) {
         if (error instanceof yup.ValidationError) {
           setErrors((prevErrors) => ({ ...prevErrors, [name]: error.message }));
@@ -121,11 +132,15 @@ export const FormProvider: React.FC<FormProviderProps> = ({
     setValues(initialValues || {});
     setErrors({});
     setTouched({});
-    setIsSubmitted(false); // Reset isSubmitted when form is reset
+    setIsSubmitted(false);
+    setClientValidationFailed(false);
+    setServerValidationFailed(false);
   }, [initialValues]);
 
   const resetSubmissionState = useCallback(() => {
     setIsSubmitted(false);
+    setClientValidationFailed(false);
+    setServerValidationFailed(false);
   }, []);
 
   const resetErrors = useCallback(() => {
@@ -136,18 +151,35 @@ export const FormProvider: React.FC<FormProviderProps> = ({
     async (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault();
       setIsSubmitting(true);
+      setClientValidationFailed(false);
+      setServerValidationFailed(false);
+
       let isValid = true;
       if (validationSchema) {
         isValid = await validateForm();
       }
+
       if (isValid) {
-        const submitErrors: any = await onSubmit(values || {});
-        setErrors(submitErrors || {});
+        const result: any = await onSubmit(values || {});
+
+        if (result && result.success) {
+          setIsSubmitting(false);
+          setIsSubmitted(true);
+          return;
+        }
+
+        if (result) {
+          setErrors(result || {});
+          setServerValidationFailed(true);
+        }
+      } else {
+        setClientValidationFailed(true);
       }
+
       setIsSubmitting(false);
       setIsSubmitted(true);
     },
-    [validateForm, onSubmit, values]
+    [validateForm, onSubmit, values, validationSchema]
   );
 
   const handleKeyPress = useCallback(
@@ -172,6 +204,7 @@ export const FormProvider: React.FC<FormProviderProps> = ({
     }
   }, [enableEnterSubmit, handleKeyPress]);
 
+  const hasErrors = Object.keys(errors).length > 0;
   const contextValue = useMemo(
     () => ({
       values,
@@ -187,6 +220,13 @@ export const FormProvider: React.FC<FormProviderProps> = ({
       submitForm,
       isSubmitted,
       resetSubmissionState,
+      done:
+        isSubmitted &&
+        !clientValidationFailed &&
+        !serverValidationFailed &&
+        !hasErrors,
+      clientValidationFailed,
+      serverValidationFailed,
     }),
     [
       values,
@@ -202,6 +242,9 @@ export const FormProvider: React.FC<FormProviderProps> = ({
       submitForm,
       isSubmitted,
       resetSubmissionState,
+      hasErrors,
+      clientValidationFailed,
+      serverValidationFailed,
     ]
   );
 
@@ -238,6 +281,8 @@ export const useFormOperations = () => {
     isSubmitting,
     isSubmitted,
     resetSubmissionState,
+    clientValidationFailed,
+    serverValidationFailed,
   } = context;
   const hasErrors = Object.keys(errors).length > 0;
 
@@ -249,5 +294,7 @@ export const useFormOperations = () => {
     isSubmitting,
     isSubmitted,
     resetSubmissionState,
+    clientValidationFailed,
+    serverValidationFailed,
   };
 };

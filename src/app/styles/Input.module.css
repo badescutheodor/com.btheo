@@ -125,7 +125,7 @@ textarea.input {
   right: var(--spacing-sm);
   bottom: var(--spacing-xs);
   font-size: var(--small-size);
-  color: var(--text-lighter);
+  color: var(--text-darker);
 }
 
 /* File upload styles */

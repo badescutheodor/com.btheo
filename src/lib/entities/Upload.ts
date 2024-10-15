@@ -38,7 +38,6 @@ export class Upload {
   static async validate(uploadData: Partial<Upload>): Promise<string[]> {
     const upload = plainToClass(Upload, uploadData);
     const errors = await validate(upload);
-    console.log(errors, errors.map(error => Object.values(error.constraints || {}).join(', ')));
     return errors.map(error => Object.values(error.constraints || {}).join(', '));
   }
 }
