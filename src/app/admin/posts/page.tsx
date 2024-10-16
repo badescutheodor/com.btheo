@@ -7,6 +7,10 @@ import CreatableSelect from "react-select/creatable";
 import MarkdownIt from "markdown-it";
 import hljs from "highlight.js";
 import "highlight.js/styles/github.css";
+import { confirm } from "@/lib/utils-client";
+import { FiFilePlus } from "react-icons/fi";
+import Modal from "@/app/components/Modal";
+import Button from "@/app/components/Button";
 
 const MdEditor = dynamic(() => import("react-markdown-editor-lite"), {
   ssr: false,
@@ -47,6 +51,7 @@ const BlogPostsPage: React.FC = () => {
   const { user } = useUser();
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
   const [labels, setLabels] = useState<{ value: string; label: string }[]>([]);
+  const [showModal, setShowModal] = useState(false);
   const [newBlogPost, setNewBlogPost] = useState<Partial<BlogPost>>({
     title: "",
     content: "",
@@ -87,8 +92,8 @@ const BlogPostsPage: React.FC = () => {
     try {
       const response = await fetch("/api/posts");
       if (response.ok) {
-        const data = await response.json();
-        setBlogPosts(data);
+        const posts = await response.json();
+        setBlogPosts(posts.data);
       } else {
         throw new Error("Failed to fetch blog posts");
       }
@@ -178,6 +183,15 @@ const BlogPostsPage: React.FC = () => {
   };
 
   const handleDeleteBlogPost = async (id: number) => {
+    const ok = await confirm({
+      title: "Are you sure?",
+      message: "Do you really want to delete this blog post?",
+    });
+
+    if (!ok) {
+      return;
+    }
+
     try {
       const response = await fetch("/api/posts", {
         method: "DELETE",
@@ -206,179 +220,196 @@ const BlogPostsPage: React.FC = () => {
     }
   };
 
-  if (!user) {
-    return <div>You must be logged in to access this page.</div>;
-  }
-
   return (
     <div>
-      <h3 className="text-3xl font-bold mb-6">Blog Posts Management</h3>
-      <h2 className="text-2xl font-semibold mb-4">Add New Blog Post</h2>
-      <form onSubmit={handleAddBlogPost} className="mb-8">
-        <input
-          type="text"
-          placeholder="Title"
-          value={newBlogPost.title}
-          onChange={(e) =>
-            setNewBlogPost({ ...newBlogPost, title: e.target.value })
-          }
-          className="w-full p-2 mb-4 border rounded"
-        />
-        <div className="md-editor-dark-mode">
-          <MdEditor
-            style={{ height: "400px" }}
-            renderHTML={(text) => mdParser.render(text)}
-            onChange={handleEditorChange}
-            value={newBlogPost.content}
-          />
+      <Modal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        fullScreen
+        title={`${editingBlogPost ? "Edit Post" : "Add Post"}`}
+      >
+        <div className={"mt-md"}>
+          <div className="row editor-row">
+            <div className="col-lg-9">
+              <MdEditor
+                style={{ height: "100%" }}
+                renderHTML={(text) => mdParser.render(text)}
+                onChange={handleEditorChange}
+                value={newBlogPost.content}
+              />
+            </div>
+            <div className="col-lg-3">
+              <div>
+                <input
+                  type="text"
+                  placeholder="Title"
+                  value={newBlogPost.title}
+                  onChange={(e) =>
+                    setNewBlogPost({ ...newBlogPost, title: e.target.value })
+                  }
+                />
+                <input
+                  type="date"
+                  value={newBlogPost.date}
+                  onChange={(e) =>
+                    setNewBlogPost({ ...newBlogPost, date: e.target.value })
+                  }
+                />
+                <div>
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={newBlogPost.isFeatured}
+                      onChange={(e) =>
+                        setNewBlogPost({
+                          ...newBlogPost,
+                          isFeatured: e.target.checked,
+                        })
+                      }
+                    />
+                    Featured
+                  </label>
+                </div>
+                <Select
+                  isMulti
+                  options={labels}
+                  value={labels.filter((label) =>
+                    newBlogPost.labels?.some(
+                      (l) => l.id === parseInt(label.value)
+                    )
+                  )}
+                  onChange={(selectedOptions) =>
+                    setNewBlogPost({
+                      ...newBlogPost,
+                      labels: selectedOptions.map((option) => ({
+                        id: parseInt(option.value),
+                        name: option.label,
+                      })),
+                    })
+                  }
+                />
+                <h3>Meta Tags</h3>
+                <input
+                  type="text"
+                  placeholder="Meta Title"
+                  value={newBlogPost.metaTags?.title || ""}
+                  onChange={(e) =>
+                    setNewBlogPost({
+                      ...newBlogPost,
+                      metaTags: {
+                        ...newBlogPost.metaTags,
+                        title: e.target.value,
+                      },
+                    })
+                  }
+                />
+                <textarea
+                  placeholder="Meta Description"
+                  value={newBlogPost.metaTags?.description || ""}
+                  onChange={(e) =>
+                    setNewBlogPost({
+                      ...newBlogPost,
+                      metaTags: {
+                        ...newBlogPost.metaTags,
+                        description: e.target.value,
+                      },
+                    })
+                  }
+                />
+                <CreatableSelect
+                  isMulti
+                  placeholder="Keywords"
+                  value={(newBlogPost.metaTags?.keywords || []).map(
+                    (keyword) => ({
+                      value: keyword,
+                      label: keyword,
+                    })
+                  )}
+                  onChange={(newValue) =>
+                    setNewBlogPost({
+                      ...newBlogPost,
+                      metaTags: {
+                        ...newBlogPost.metaTags,
+                        keywords: newValue.map((item) => item.value),
+                      },
+                    })
+                  }
+                />
+                <input
+                  type="text"
+                  placeholder="Excerpt"
+                  value={newBlogPost.excerpt || ""}
+                  onChange={(e) =>
+                    setNewBlogPost({
+                      ...newBlogPost,
+                      excerpt: e.target.value,
+                    })
+                  }
+                />
+                <input
+                  type="text"
+                  placeholder="OG Image URL"
+                  value={newBlogPost.metaTags?.ogImage || ""}
+                  onChange={(e) =>
+                    setNewBlogPost({
+                      ...newBlogPost,
+                      metaTags: {
+                        ...newBlogPost.metaTags,
+                        ogImage: e.target.value,
+                      },
+                    })
+                  }
+                />
+                <input
+                  type="text"
+                  placeholder="OG Title"
+                  value={newBlogPost.metaTags?.ogTitle || ""}
+                  onChange={(e) =>
+                    setNewBlogPost({
+                      ...newBlogPost,
+                      metaTags: {
+                        ...newBlogPost.metaTags,
+                        ogTitle: e.target.value,
+                      },
+                    })
+                  }
+                />
+                <textarea
+                  placeholder="OG Description"
+                  value={newBlogPost.metaTags?.ogDescription || ""}
+                  onChange={(e) =>
+                    setNewBlogPost({
+                      ...newBlogPost,
+                      metaTags: {
+                        ...newBlogPost.metaTags,
+                        ogDescription: e.target.value,
+                      },
+                    })
+                  }
+                />
+                <Button type="submit" color="primary" fullWidth>
+                  Save
+                </Button>
+              </div>
+            </div>
+          </div>
         </div>
-        <input
-          type="date"
-          value={newBlogPost.date}
-          onChange={(e) =>
-            setNewBlogPost({ ...newBlogPost, date: e.target.value })
-          }
-          className="w-full p-2 my-4 border rounded"
-        />
-        <div className="mb-4">
-          <label className="flex items-center">
-            <input
-              type="checkbox"
-              checked={newBlogPost.isFeatured}
-              onChange={(e) =>
-                setNewBlogPost({ ...newBlogPost, isFeatured: e.target.checked })
-              }
-              className="mr-2"
-            />
-            Featured
-          </label>
+      </Modal>
+      <div className="row">
+        <div className="col-6">
+          <h3 className="m-0">Posts</h3>
         </div>
-        <Select
-          isMulti
-          options={labels}
-          value={labels.filter((label) =>
-            newBlogPost.labels?.some((l) => l.id === parseInt(label.value))
-          )}
-          onChange={(selectedOptions) =>
-            setNewBlogPost({
-              ...newBlogPost,
-              labels: selectedOptions.map((option) => ({
-                id: parseInt(option.value),
-                name: option.label,
-              })),
-            })
-          }
-          className="mb-4"
-        />
-        <h3 className="text-xl font-semibold mb-2">Meta Tags</h3>
-        <input
-          type="text"
-          placeholder="Meta Title"
-          value={newBlogPost.metaTags?.title || ""}
-          onChange={(e) =>
-            setNewBlogPost({
-              ...newBlogPost,
-              metaTags: { ...newBlogPost.metaTags, title: e.target.value },
-            })
-          }
-          className="w-full p-2 mb-2 border rounded"
-        />
-        <textarea
-          placeholder="Meta Description"
-          value={newBlogPost.metaTags?.description || ""}
-          onChange={(e) =>
-            setNewBlogPost({
-              ...newBlogPost,
-              metaTags: {
-                ...newBlogPost.metaTags,
-                description: e.target.value,
-              },
-            })
-          }
-          className="w-full p-2 mb-2 border rounded"
-        />
-        <CreatableSelect
-          isMulti
-          placeholder="Keywords"
-          value={(newBlogPost.metaTags?.keywords || []).map((keyword) => ({
-            value: keyword,
-            label: keyword,
-          }))}
-          onChange={(newValue) =>
-            setNewBlogPost({
-              ...newBlogPost,
-              metaTags: {
-                ...newBlogPost.metaTags,
-                keywords: newValue.map((item) => item.value),
-              },
-            })
-          }
-          className="mb-2"
-        />
-        <input
-          type="text"
-          placeholder="Excerpt"
-          value={newBlogPost.excerpt || ""}
-          onChange={(e) =>
-            setNewBlogPost({
-              ...newBlogPost,
-              excerpt: e.target.value,
-            })
-          }
-          className="w-full p-2 mb-2 border rounded"
-        />
-        <input
-          type="text"
-          placeholder="OG Image URL"
-          value={newBlogPost.metaTags?.ogImage || ""}
-          onChange={(e) =>
-            setNewBlogPost({
-              ...newBlogPost,
-              metaTags: { ...newBlogPost.metaTags, ogImage: e.target.value },
-            })
-          }
-          className="w-full p-2 mb-2 border rounded"
-        />
-        <input
-          type="text"
-          placeholder="OG Title"
-          value={newBlogPost.metaTags?.ogTitle || ""}
-          onChange={(e) =>
-            setNewBlogPost({
-              ...newBlogPost,
-              metaTags: { ...newBlogPost.metaTags, ogTitle: e.target.value },
-            })
-          }
-          className="w-full p-2 mb-2 border rounded"
-        />
-        <textarea
-          placeholder="OG Description"
-          value={newBlogPost.metaTags?.ogDescription || ""}
-          onChange={(e) =>
-            setNewBlogPost({
-              ...newBlogPost,
-              metaTags: {
-                ...newBlogPost.metaTags,
-                ogDescription: e.target.value,
-              },
-            })
-          }
-          className="w-full p-2 mb-4 border rounded"
-        />
-        <button
-          type="submit"
-          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-        >
-          Add Blog Post
-        </button>
-      </form>
-
-      {error && <p className="text-red-500 mb-4">{error}</p>}
-
-      <h2 className="text-2xl font-semibold mb-4">Current Blog Posts</h2>
+        <div className="col-6 text-right">
+          <div>
+            <Button onClick={() => setShowModal(true)}>
+              <FiFilePlus className={"mr-xs"} /> Create new post
+            </Button>
+          </div>
+        </div>
+      </div>
       <ul>
         {blogPosts.map((blogPost) => (
-          <li key={blogPost.id} className="mb-8 p-4 border rounded">
+          <li key={blogPost.id}>
             {editingBlogPost && editingBlogPost.id === blogPost.id ? (
               <form onSubmit={handleUpdateBlogPost}>
                 <input
@@ -390,7 +421,6 @@ const BlogPostsPage: React.FC = () => {
                       title: e.target.value,
                     })
                   }
-                  className="w-full p-2 mb-4 border rounded"
                 />
                 <MdEditor
                   style={{ height: "400px" }}
@@ -409,10 +439,9 @@ const BlogPostsPage: React.FC = () => {
                       date: e.target.value,
                     })
                   }
-                  className="w-full p-2 my-4 border rounded"
                 />
-                <div className="mb-4">
-                  <label className="flex items-center">
+                <div>
+                  <label>
                     <input
                       type="checkbox"
                       checked={editingBlogPost.isFeatured}
@@ -422,7 +451,6 @@ const BlogPostsPage: React.FC = () => {
                           isFeatured: e.target.checked,
                         })
                       }
-                      className="mr-2"
                     />
                     Featured
                   </label>
@@ -444,9 +472,8 @@ const BlogPostsPage: React.FC = () => {
                       })),
                     })
                   }
-                  className="mb-4"
                 />
-                <h3 className="text-xl font-semibold mb-2">Meta Tags</h3>
+                <h3>Meta Tags</h3>
                 <input
                   type="text"
                   placeholder="Meta Title"
@@ -460,7 +487,6 @@ const BlogPostsPage: React.FC = () => {
                       },
                     })
                   }
-                  className="w-full p-2 mb-2 border rounded"
                 />
                 <textarea
                   placeholder="Meta Description"
@@ -474,7 +500,6 @@ const BlogPostsPage: React.FC = () => {
                       },
                     })
                   }
-                  className="w-full p-2 mb-2 border rounded"
                 />
                 <CreatableSelect
                   isMulti
@@ -491,7 +516,6 @@ const BlogPostsPage: React.FC = () => {
                       },
                     })
                   }
-                  className="mb-2"
                 />
                 <input
                   type="text"
@@ -506,7 +530,6 @@ const BlogPostsPage: React.FC = () => {
                       },
                     })
                   }
-                  className="w-full p-2 mb-2 border rounded"
                 />
                 <input
                   type="text"
@@ -521,7 +544,6 @@ const BlogPostsPage: React.FC = () => {
                       },
                     })
                   }
-                  className="w-full p-2 mb-2 border rounded"
                 />
                 <textarea
                   placeholder="OG Description"
@@ -535,19 +557,12 @@ const BlogPostsPage: React.FC = () => {
                       },
                     })
                   }
-                  className="w-full p-2 mb-4 border rounded"
                 />
-                <div className="flex justify-end">
-                  <button
-                    type="submit"
-                    className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 mr-2"
-                  >
-                    Save
-                  </button>
+                <div>
+                  <button type="submit">Save</button>
                   <button
                     type="button"
                     onClick={() => setEditingBlogPost(null)}
-                    className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
                   >
                     Cancel
                   </button>
@@ -555,19 +570,17 @@ const BlogPostsPage: React.FC = () => {
               </form>
             ) : (
               <>
-                <h3 className="text-xl font-bold mb-2">{blogPost.title}</h3>
-                <p className="mb-2">Author: {blogPost.author.name}</p>
-                <p className="mb-2">Date: {blogPost.date}</p>
-                <p className="mb-2">Read Time: {blogPost.readTime}</p>
-                <p className="mb-2">
-                  Featured: {blogPost.isFeatured ? "Yes" : "No"}
-                </p>
-                <p className="mb-2">
+                <h3>{blogPost.title}</h3>
+                <p>Author: {blogPost.author.name}</p>
+                <p>Date: {blogPost.date}</p>
+                <p>Read Time: {blogPost.readTime}</p>
+                <p>Featured: {blogPost.isFeatured ? "Yes" : "No"}</p>
+                <p>
                   Labels:{" "}
                   {blogPost.labels.map((label) => label.name).join(", ")}
                 </p>
-                <div className="mb-4">
-                  <h4 className="font-semibold">Meta Tags:</h4>
+                <div>
+                  <h4>Meta Tags:</h4>
                   <p>Title: {blogPost.metaTags?.title}</p>
                   <p>Description: {blogPost.metaTags?.description}</p>
                   <p>Keywords: {blogPost.metaTags?.keywords?.join(", ")}</p>
@@ -576,23 +589,16 @@ const BlogPostsPage: React.FC = () => {
                   <p>OG Description: {blogPost.metaTags?.ogDescription}</p>
                 </div>
                 <div
-                  className="prose max-w-full mb-4"
                   dangerouslySetInnerHTML={{
                     __html: mdParser.render(blogPost.content),
                   }}
                 />
                 {(user.id === blogPost.author.id || user.role === "admin") && (
-                  <div className="flex justify-end">
-                    <button
-                      onClick={() => setEditingBlogPost(blogPost)}
-                      className="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600 mr-2"
-                    >
+                  <div>
+                    <button onClick={() => setEditingBlogPost(blogPost)}>
                       Edit
                     </button>
-                    <button
-                      onClick={() => handleDeleteBlogPost(blogPost.id)}
-                      className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
-                    >
+                    <button onClick={() => handleDeleteBlogPost(blogPost.id)}>
                       Delete
                     </button>
                   </div>

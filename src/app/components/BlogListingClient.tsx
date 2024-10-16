@@ -1,7 +1,11 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import Input from "./Input";
+import { FiSearch } from "react-icons/fi";
+import { debounce } from "@/lib/utils-client";
+import Pagination from "./Pagination";
 
 interface BlogPost {
   id: number;
@@ -16,8 +20,11 @@ interface BlogPost {
 }
 
 interface BlogListingClientProps {
-  initialPosts: BlogPost[];
-  labels: Record<string, any>[];
+  initialPosts: {
+    data: BlogPost[];
+    meta: Record<string, any>;
+  };
+  labels: Record<string, string>[];
   initialPage: number;
   initialLabel?: string;
   totalPages: number;
@@ -30,7 +37,9 @@ export default function BlogListingClient({
   initialLabel,
   totalPages,
 }: BlogListingClientProps) {
-  const [posts, setPosts] = useState(initialPosts);
+  const [search, setSearch] = useState("");
+  const [posts, setPosts] = useState(initialPosts.data);
+  const [meta, setMeta] = useState(initialPosts.meta);
   const [page, setPage] = useState(initialPage);
   const [selectedLabel, setSelectedLabel] = useState(initialLabel);
 
@@ -40,51 +49,77 @@ export default function BlogListingClient({
   useEffect(() => {
     const newPage = Number(searchParams.get("page")) || 1;
     const newLabel = searchParams.get("label") || undefined;
+    const newSearch = searchParams.get("search") || undefined;
 
     if (newPage !== page || newLabel !== selectedLabel) {
-      fetchPosts(newPage, newLabel);
+      fetchPosts(newPage, newLabel, newSearch);
     }
   }, [searchParams]);
 
-  const fetchPosts = async (newPage: number, label?: any) => {
-    const params = new URLSearchParams();
-    params.set("page", newPage.toString());
-    if (label) params.set("label", label);
+  const fetchPosts = useCallback(
+    async (newPage: number, label?: any, newSearch?: string) => {
+      const params = new URLSearchParams();
+      if (newPage > 1) {
+        params.set("page", newPage.toString());
+      }
 
-    const res = await fetch(`/api/posts?${params.toString()}`);
-    const data = await res.json();
-    setPosts(data);
-    setPage(newPage);
-    setSelectedLabel(label.slug);
+      if (newSearch) {
+        params.set("search", newSearch || "");
+      }
 
-    router.push(`/blog?${params.toString()}`, { scroll: false });
-  };
+      if (label) params.set("label", label);
+
+      const res = await fetch(`/api/posts?${params.toString()}`);
+      const posts = await res.json();
+      setPosts(posts.data);
+      setPage(newPage);
+      setSelectedLabel(label.slug);
+
+      router.push(`/blog?${params.toString()}`, { scroll: false });
+    },
+    [router]
+  );
 
   const handleLabelChange = (label: string) => {
     fetchPosts(1, label);
   };
 
-  const getPageUrl = (pageNum: number) => {
+  const onPageChange = (pageNum: number) => {
     const params = new URLSearchParams();
     params.set("page", pageNum.toString());
     if (selectedLabel) params.set("label", selectedLabel);
-    return `/blog?${params.toString()}`;
+    router.push(`/blog?${params.toString()}`, { scroll: false });
+    setPage(pageNum);
+    fetchPosts(pageNum, selectedLabel, search);
+  };
+
+  const debouncedSearch = useMemo(
+    () =>
+      debounce((search: string) => {
+        fetchPosts(1, "", search);
+      }, 300),
+    [fetchPosts]
+  );
+
+  const onSearchChange = (value: string) => {
+    setSearch(value);
+    debouncedSearch(value);
   };
 
   return (
     <div>
-      <div>
-        <select
-          value={selectedLabel || ""}
-          onChange={(e) => handleLabelChange(e.target.value)}
-        >
-          <option value="">All Labels</option>
-          {labels.map((label) => (
-            <option key={label.id} value={label.slug}>
-              {label.name}
-            </option>
-          ))}
-        </select>
+      <div className="row">
+        <div className="col-lg-5 col-sm-12">
+          <Input
+            iconLeft={<FiSearch />}
+            name="search"
+            type="text"
+            value={search}
+            placeholder="Search for blog posts..."
+            withClear
+            onChange={onSearchChange}
+          />
+        </div>
       </div>
       {posts.map((post) => (
         <div key={post.id}>
@@ -96,13 +131,12 @@ export default function BlogListingClient({
         </div>
       ))}
       <div>
-        {page > 1 && <Link href={getPageUrl(page - 1)}>Previous</Link>}
-        {[...Array(totalPages)].map((_, i) => (
-          <Link key={i} href={getPageUrl(i + 1)}>
-            {i + 1}
-          </Link>
-        ))}
-        {page < totalPages && <Link href={getPageUrl(page + 1)}>Next</Link>}
+        <Pagination
+          itemsPerPage={meta.perPage}
+          page={page}
+          onPageChange={onPageChange}
+          totalPages={meta.totalPages}
+        />
       </div>
     </div>
   );

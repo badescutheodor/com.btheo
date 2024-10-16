@@ -3,22 +3,38 @@ import { getSession } from '@/lib/auth';
 import { getDB } from '@/lib/db';
 import { BlogPost } from '@/lib/entities/BlogPost';
 import { Label } from '@/lib/entities/Label';
+import { QueryHandler, QueryOptions } from '@/lib/utils-server';
 
 export async function GET(req: NextRequest) {
   try {
     const user = await getSession(req);
-
-    if (!user) {
-      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
-    }
-
     const db = await getDB();
     const blogPostRepository = db.getRepository(BlogPost);
-    const blogPosts = await blogPostRepository.find({
-      relations: ['author', 'labels'],
-    });
+    const queryHandler = new QueryHandler(blogPostRepository);
 
-    return NextResponse.json(blogPosts);
+    // Set up role-based field selection with dot notation
+    queryHandler.setRoleFields('public', [
+      'id', 'title', 'excerpt', 'date', 'readTime', 'views', 'isFeatured', 'slug'
+    ]);
+
+    queryHandler.setRoleFields('admin', [
+      'id', 'title', 'content', 'excerpt', 'date', 'readTime', 'views', 'isFeatured', 'slug', 'metaTags'
+    ]);
+
+    const url = new URL(req.url);
+    const options: QueryOptions<BlogPost> = {
+      page: parseInt(url.searchParams.get('page') || '1', 10),
+      limit: parseInt(url.searchParams.get('limit') || '10', 10),
+      sort: url.searchParams.get('sort') || undefined,
+      search: url.searchParams.get('search') || undefined,
+      searchFields: ['title'],
+      filters: url.searchParams.get('label') 
+        ? { labels: [{ name: url.searchParams.get('label') }] }
+        : undefined,
+    };
+
+    const result = await queryHandler.filterMulti(options, ['author', 'author.avatar', 'labels'], user?.role);
+    return NextResponse.json(result);
   } catch {
     return NextResponse.json({ message: 'Error fetching blog posts' }, { status: 500 });
   }

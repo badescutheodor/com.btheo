@@ -57,10 +57,14 @@
 .iconLeft,
 .addonLeft {
   left: var(--spacing-sm);
+  display: flex;
+  align-items: center;
 }
 
 .iconRight,
 .addonRight {
+  display: flex;
+  align-items: center;
   right: var(--spacing-sm);
 }
 
@@ -240,6 +244,8 @@ textarea.input {
   border: none;
   cursor: pointer;
   color: var(--text-lighter);
+  display: flex;
+  align-items: center;
 }
 
 /* Select styles */

@@ -67,11 +67,13 @@ export default function LoginForm() {
                 placeholder: "Email",
                 autoFocus: true,
                 iconLeft: <FiUser />,
+                size: "col-xs-12",
               },
               password: {
                 type: "password",
                 placeholder: "Password",
                 iconLeft: <FiLock />,
+                size: "col-xs-12",
               },
             }}
           />

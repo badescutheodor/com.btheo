@@ -1,6 +1,6 @@
 import { Metadata } from "next";
 import FeaturedPosts from "@/app/components/FeaturedPosts";
-import { getSettings } from "@/lib/utils";
+import { getSettings } from "@/lib/utils-server";
 import Button from "@/app/components/Button";
 import { FiFileText } from "react-icons/fi";
 
@@ -15,7 +15,7 @@ export default async function Home() {
     <div className="home">
       <div className="profile">
         <h1>{settings.homeTitle}</h1>
-        <p>{settings.homeDescription}</p>
+        <p className="col-lg-8 col-md-12">{settings.homeDescription}</p>
         {settings.resumeLink && (
           <Button
             size={"large"}

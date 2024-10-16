@@ -1,4 +1,11 @@
-import React, { useState, useRef, useEffect, lazy, Suspense } from "react";
+import React, {
+  useState,
+  useRef,
+  useEffect,
+  lazy,
+  Suspense,
+  useCallback,
+} from "react";
 import { useDropzone } from "react-dropzone";
 import {
   FiX,
@@ -12,6 +19,8 @@ import "react-datepicker/dist/react-datepicker.css";
 import moment from "moment";
 import { useForm } from "./FormProvider";
 import styles from "@/app/styles/Input.module.css";
+import Select from "react-select";
+import CreatableSelect from "react-select/creatable";
 
 const Switch = lazy(() => import("./Switch"));
 const Checkbox = lazy(() => import("./Checkbox"));
@@ -30,7 +39,9 @@ type InputType =
   | "date"
   | "time"
   | "datetime"
-  | "file";
+  | "file"
+  | "react-select"
+  | "react-select-creatable";
 
 interface InputProps {
   type: InputType;
@@ -55,6 +66,9 @@ interface InputProps {
   onChange?: (value: unknown) => void;
   onBlur?: () => void;
   error?: string;
+  isMulti?: boolean;
+  isClearable?: boolean;
+  isSearchable?: boolean;
 }
 
 const Input: React.FC<InputProps> = React.memo(
@@ -81,12 +95,20 @@ const Input: React.FC<InputProps> = React.memo(
     onChange: propOnChange,
     onBlur: propOnBlur,
     error: propError,
+    isMulti,
+    isClearable,
+    isSearchable,
   }) => {
-    const formContext = useForm();
+    let formContext = {};
+    try {
+      formContext = useForm();
+    } catch {}
+
     const [isFocused, setIsFocused] = useState(autoFocus);
     const inputRef = useRef<
       HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
     >(null);
+    const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
     const isControlled = propValue !== undefined && propOnChange !== undefined;
 
@@ -111,19 +133,30 @@ const Input: React.FC<InputProps> = React.memo(
     const handleFocus = () => {
       setIsFocused(true);
       if (!isControlled) {
-        formContext?.setFieldTouched(name, true);
+        //formContext?.setFieldTouched(name, true);
       }
     };
+
+    const debouncedValidation = useCallback(
+      (fieldName: string, fieldValue: unknown) => {
+        if (debounceTimerRef.current) {
+          clearTimeout(debounceTimerRef.current);
+        }
+
+        debounceTimerRef.current = setTimeout(() => {
+          formContext?.validateField(fieldName, fieldValue);
+        }, 300); // 300ms debounce time
+      },
+      [formContext]
+    );
 
     const handleBlur = () => {
       setIsFocused(false);
       if (isControlled) {
         propOnBlur?.();
       } else {
-        setTimeout(() => {
-          formContext?.setFieldTouched(name, true);
-          formContext?.validateField(name, value);
-        }, 200);
+        formContext?.setFieldTouched(name, true);
+        debouncedValidation(name, value);
       }
     };
 
@@ -132,10 +165,7 @@ const Input: React.FC<InputProps> = React.memo(
         propOnChange(newValue);
       } else {
         formContext?.setFieldValue(name, newValue);
-        if (!touched) {
-          formContext?.setFieldTouched(name, true);
-        }
-        touched && formContext?.validateField(name, newValue);
+        touched && debouncedValidation(name, newValue);
       }
     };
 
@@ -321,6 +351,26 @@ const Input: React.FC<InputProps> = React.memo(
           );
         case "file":
           return renderFileUpload();
+        case "react-select":
+        case "react-select-creatable":
+          const SelectComponent =
+            type === "react-select" ? Select : CreatableSelect;
+          return (
+            <SelectComponent
+              options={options}
+              value={value}
+              onChange={(newValue) => handleChange(newValue)}
+              onBlur={handleBlur}
+              isDisabled={disabled}
+              isLoading={loading}
+              placeholder={placeholder}
+              className={`${styles.reactSelect} ${error ? styles.error : ""}`}
+              classNamePrefix="react-select"
+              isMulti={isMulti}
+              isClearable={isClearable}
+              isSearchable={isSearchable}
+            />
+          );
         default:
           return (
             <>

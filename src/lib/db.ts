@@ -12,21 +12,16 @@ const options: DataSourceOptions = {
 
 export const AppDataSource = new DataSource(options);
 
-let initialized = false;
-
 export async function initializeDataSource() {
-    if (!initialized) {
-        await AppDataSource.initialize();
-        initialized = true;
+    if (!AppDataSource.isConnected) {
+        await AppDataSource.connect();
     }
 
     return AppDataSource;
 }
 
 export async function getDB() {
-  if (!AppDataSource.isInitialized) {
-      await initializeDataSource();
-  }
+  await initializeDataSource();
 
   return AppDataSource;
 }

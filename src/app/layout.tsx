@@ -2,7 +2,7 @@ import "normalize.css";
 import "@/app/styles/theme.css";
 import "@/app/styles/global.css";
 import Layout from "@/app/components/Layout";
-import { getCurrentUser, getSettings } from "@/lib/utils";
+import { getCurrentUser, getSettings } from "@/lib/utils-server";
 import { Inter, Poppins } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import BackgroundTransition from "./components/BodyTransition";

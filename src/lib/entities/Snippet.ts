@@ -1,5 +1,5 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, ManyToMany, JoinTable } from "typeorm";
-import { IsNotEmpty, IsString, IsBoolean, MaxLength, ArrayNotEmpty, ValidateNested, IsOptional, validate, ValidationError } from "class-validator";
+import { IsNotEmpty, IsString, IsBoolean, MaxLength, ArrayNotEmpty, Min, ValidateNested, IsInt, IsOptional, validate, ValidationError } from "class-validator";
 import { Type, plainToClass } from "class-transformer";
 import { User } from "./User";
 import { Label } from "./Label";
@@ -20,6 +20,16 @@ export class Snippet {
   @IsNotEmpty()
   @IsString()
   content: string;
+
+  @Column({ default: 0 })
+  @IsInt()
+  @Min(0)
+  views: number;
+
+  @Column({ default: 0 })
+  @IsInt()
+  @Min(0)
+  loved: number;
 
   @Column()
   @IsNotEmpty()

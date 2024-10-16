@@ -33,10 +33,11 @@ export async function validateUser(email: string, password: string) {
   const user = await userRepository.findOne({
      where: { email },  
   });
+  console.log(user);
 
   if (user && await compare(password, user.password)) {
     // @ts-ignore
-    delete user.password;
+    //delete user.password;
     return user;
   }
   return null;

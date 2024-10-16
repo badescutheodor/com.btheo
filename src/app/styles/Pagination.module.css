@@ -1,0 +1,44 @@
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: var(--spacing-md);
+}
+
+.pageButton {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  margin: 0 var(--spacing-xs);
+  border: none;
+  background-color: var(--bg-lighter);
+  color: var(--text);
+  font-size: var(--btn-font-size);
+  cursor: pointer;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+.pageButton:hover:not(:disabled) {
+  background-color: var(--accent);
+  color: var(--btn-text);
+}
+
+.pageButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.currentPage {
+  background-color: var(--accent);
+  color: var(--btn-text);
+}
+
+.prevNext {
+  font-weight: bold;
+}
+
+.prevNext:first-child {
+  margin-right: var(--spacing-sm);
+}
+
+.prevNext:last-child {
+  margin-left: var(--spacing-sm);
+}

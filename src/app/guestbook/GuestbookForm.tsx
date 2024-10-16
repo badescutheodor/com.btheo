@@ -4,6 +4,7 @@ import Button from "../components/Button";
 import AutoFormBuilder from "../components/AutoFormBuilder";
 import FormErrors from "../components/FormErrors";
 import * as yup from "yup";
+import { FiCheckCircle } from "react-icons/fi";
 
 export default function GuestbookForm({ createGuestbook }: any) {
   const handleSubmit = async (values = {}) => {
@@ -20,12 +21,23 @@ export default function GuestbookForm({ createGuestbook }: any) {
           message: {
             rules: [yup.string().required("Message is required")],
           },
+          email: {
+            rules: [yup.string().email("Invalid email")],
+          },
+          website: {
+            rules: [yup.string().url("Invalid URL")],
+          },
         }}
         onSubmit={handleSubmit}
       >
         {({ done, submitForm }) => {
           if (done) {
-            return <p>Thanks for signing the guestbook!</p>;
+            return (
+              <p className="success col-lg-6 col-sm-12 flex items-center">
+                <FiCheckCircle className={"mr-xs"} /> Thanks for signing the
+                guestbook!
+              </p>
+            );
           }
 
           return (

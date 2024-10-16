@@ -1,5 +1,5 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne } from "typeorm";
-import { IsNotEmpty, IsString, IsDate, ValidateNested, MaxLength, IsEmail, IsOptional, IsUrl, validate, ValidationError } from "class-validator";
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, OneToMany, JoinColumn } from "typeorm";
+import { IsNotEmpty, IsString, IsDate, ValidateNested, MaxLength, IsEmail,IsInt, IsOptional, IsUrl, validate, ValidationError } from "class-validator";
 import { Type, plainToClass } from "class-transformer";
 import { BlogPost } from "./BlogPost";
 import type { Relation } from "typeorm";
@@ -37,6 +37,21 @@ export class Comment {
     @ValidateNested()
     @Type(() => BlogPost)
     post: Relation<BlogPost>
+
+    @Column({ nullable: true })
+    @IsOptional()
+    @IsInt()
+    parentCommentId: number | null;
+
+    @ManyToOne(() => Comment, comment => comment.replies)
+    @JoinColumn({ name: "parentCommentId" })
+    @IsOptional()
+    @ValidateNested()
+    @Type(() => Comment)
+    parentComment: Comment | null;
+
+    @OneToMany(() => Comment, comment => comment.parentComment)
+    replies: Comment[];
 
     @CreateDateColumn()
     @IsDate()

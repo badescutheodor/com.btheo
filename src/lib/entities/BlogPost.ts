@@ -1,5 +1,5 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, ManyToMany, JoinTable, OneToMany, CreateDateColumn } from "typeorm";
-import { IsNotEmpty, IsString, IsDate, IsInt, Min, IsBoolean, IsUrl, IsOptional, ValidateNested, ArrayMinSize, validate, ValidationError } from "class-validator";
+import { IsNotEmpty, IsString, IsDate, IsInt, Min, IsBoolean, IsUrl, IsOptional, ValidateNested, IsEnum, ArrayMinSize, validate, ValidationError } from "class-validator";
 import { Type, plainToClass } from "class-transformer";
 import type { Relation } from "typeorm";
 import { User } from "./User";
@@ -32,6 +32,11 @@ class MetaTags {
   ogDescription?: string;
 }
 
+enum BlogPostStatus {
+  DRAFT = "draft",
+  PUBLISHED = "published",
+}
+
 @Entity()
 export class BlogPost {
   @PrimaryGeneratedColumn()
@@ -52,6 +57,14 @@ export class BlogPost {
   @IsString()
   excerpt: string;
 
+  @Column({
+    type: "varchar",
+    length: 20,
+    default: BlogPostStatus.DRAFT
+  })
+  @IsEnum(BlogPostStatus, { message: "Invalid post status" })
+  status: 'draft' | 'published';
+
   @Column()
   @IsDate()
   date: Date;
@@ -64,6 +77,11 @@ export class BlogPost {
   @IsInt()
   @Min(0)
   views: number;
+
+  @Column({ default: 0 })
+  @IsInt()
+  @Min(0)
+  claps: number;
 
   @Column({ default: false })
   @IsBoolean()

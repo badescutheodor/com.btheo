@@ -5,7 +5,7 @@ export default function Guestbook() {
   return (
     <>
       <h3 className={"mt-0-xs"}>Guestbook</h3>
-      <p>
+      <p className="col-lg-6 col-sm-12">
         I'd love to hear from you! Leave your thoughts, feedback, or just say
         hello — let’s stay connected and keep the conversation going!
       </p>

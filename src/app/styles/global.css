@@ -146,8 +146,8 @@ a:focus {
 }
 
 .rc-md-navigation {
-  background-color: var(--bg);
-  border-bottom-color: var(--accent);
+  background-color: var(--bg) !important;
+  border-bottom-color: var(--accent) !important;
 }
 
 .rc-md-navigation .button {
@@ -165,7 +165,16 @@ a:focus {
 
 .rc-md-editor .editor-container .sec-html .html-wrap {
   background-color: var(--bg);
-  color: var(--text);
+  color: var(--text-lightest) !important;
+}
+
+.rc-md-editor .editor-container .sec-html .html-wrap .custom-html-style {
+  color: var(--text-lightest) !important;
+}
+
+.rc-md-editor .editor-container .sec-md .input {
+  background-color: var(--bg) !important;
+  color: var(--text) !important;
 }
 
 /* Grid System */
@@ -499,27 +508,18 @@ a:focus {
 .admin-nav.open .toggle-button {
   text-align: left;
 }
-.md-edit-dark-mode .rc-md-editor {
-  background-color: #1e1e1e;
-  color: #d4d4d4;
+
+.rc-md-editor {
+  border: none !important;
+  background: var(--bg) !important;
 }
 
-.md-edit-dark-mode .rc-md-editor .section-container {
-  background-color: #1e1e1e;
+.rc-md-editor .editor-container > .section {
+  border-color: var(--accent) !important;
 }
 
 .md-edit-dark-mode .rc-md-editor .rc-md-navigation {
-  background-color: #2d2d2d;
-}
-
-.md-edit-dark-mode .rc-md-editor .rc-md-editor-preview {
-  background-color: #1e1e1e;
-  color: #d4d4d4;
-}
-
-.md-edit-dark-mode .rc-md-editor .rc-md-toolbar {
-  background-color: #2d2d2d;
-  border-color: #3d3d3d;
+  background-color: var(--bg) !important;
 }
 
 .visible-xs {
@@ -1248,4 +1248,16 @@ a:focus {
   .pr-0-xl {
     padding-right: 0 !important;
   }
+}
+
+.circle {
+  border-radius: 50%;
+}
+
+.m-0 {
+  margin: 0 !important;
+}
+
+.editor-row {
+  height: calc(100vh - 100px);
 }

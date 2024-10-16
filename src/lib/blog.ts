@@ -2,11 +2,12 @@ import { getDB } from '@/lib/db';
 import { BlogPost } from '@/lib/entities/BlogPost';
 import { Comment } from '@/lib/entities/Comment';
 import { markdown } from '@/lib/markdown';
-import { In } from 'typeorm';
+import { QueryHandler } from '@/lib/utils-server';
 
 interface GetBlogPostsOptions {
   page?: number;
-  label: Record<string, any>;
+  label?: Record<string, any>;
+  search?: string;
 }
 
 function extractFirstImage(content: string): string | null {
@@ -67,49 +68,24 @@ export async function getRelatedPosts(postId: number, labelIds: number[], limit:
 export async function getBlogPosts({
   page = 1,
   label,
+  search,
 }: GetBlogPostsOptions) {
   const db = await getDB();
   const blogPostRepository = db.getRepository(BlogPost);
+  const queryHandler = new QueryHandler(blogPostRepository);
+  queryHandler.setRoleFields('public', ['id', 'content', 'excerpt', 'author.avatar.filename', 'labels.name', 'labels.slug', 'metaTags']);
+  const posts = await queryHandler.filterMulti({
+    page,
+    limit: 10,
+  }, ['author.avatar', 'labels'], 'public');
 
-  const queryBuilder = blogPostRepository
-    .createQueryBuilder('posts')
-    .leftJoinAndSelect('posts.labels', 'labels')
-    .leftJoinAndSelect('posts.author', 'author')
-    .select([
-      'posts.id',
-      'posts.slug',
-      'posts.title',
-      'posts.content',
-      'posts.excerpt',
-      'posts.views',
-      'posts.isFeatured',
-      'posts.createdAt',
-      'author.name',
-      'author.avatar',
-      'labels'
-    ])
-    .skip((page - 1) * 10)
-    .take(10)
-    .orderBy('posts.createdAt', 'DESC');
-
-  if (label) {
-    queryBuilder.andWhere('labels.name = :label', { label });
+  return {
+    data: posts.data.map(post => ({
+      ...post,
+      imagePreview: extractFirstImage(post.content),
+    })),
+    meta: posts.meta,
   }
-
-  const posts = await queryBuilder.getMany();
-
-  return posts.map(post => ({
-    id: post.id,
-    slug: post.slug,
-    title: post.title,
-    content: post.content,
-    excerpt: post.excerpt,
-    author:  {...post.author},
-    labels: post.labels.map(label => label ? {...label} : {}),
-    views: post.views,
-    isFeatured: post.isFeatured,
-    date: post.createdAt.toISOString(),
-  }));
 }
 
 export async function getBlogPostBySlug(slug: string) {
