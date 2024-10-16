@@ -1261,3 +1261,71 @@ a:focus {
 .editor-row {
   height: calc(100vh - 100px);
 }
+
+.react-datepicker-wrapper > div > div {
+  display: flex;
+  align-items: center;
+}
+
+.react-datepicker-wrapper > div > div svg {
+  left: 7px;
+}
+
+.react-datepicker-popper {
+  z-index: 9 !important;
+}
+
+.react-datepicker-wrapper input {
+  padding-left: 33px !important;
+}
+
+.react-datepicker-wrapper {
+  width: 100%;
+}
+
+.react-select__control {
+  border: 1px solid var(--input-border) !important;
+  background: var(--bg-lightest) !important;
+  border-radius: 0 !important;
+}
+
+.react-select__menu {
+  background: var(--bg-lightest) !important;
+  border: 1px solid var(--input-border) !important;
+  border-radius: 0 !important;
+  font-size: var(--small-size) !important;
+  z-index: 9 !important;
+}
+
+.react-select__value-container {
+  color: var(--text-lightest);
+}
+
+.react-select__option:hover {
+  background: var(--bg-lighter) !important;
+}
+
+.react-select__multi-value {
+  background: var(--bg-lightest) !important;
+  border: 1px solid var(--input-border) !important;
+  border-radius: 0 !important;
+  color: var(--text-lightest) !important;
+}
+
+.react-select__multi-value__label {
+  color: var(--text-lightest) !important;
+}
+
+.react-select__option--is-focused {
+  background: var(--bg-lighter) !important;
+}
+
+.react-select__single-value {
+  color: var(--text-lightest) !important;
+  font-size: var(--small-size) !important;
+}
+
+.react-select__input-container {
+  color: var(--text-lightest) !important;
+  font-size: var(--small-size) !important;
+}

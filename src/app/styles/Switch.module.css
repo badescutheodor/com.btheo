@@ -43,6 +43,7 @@
 
 .switchLabel {
   margin-left: var(--spacing-sm);
+  font-size: var(--medium-size);
 }
 
 .disabled {

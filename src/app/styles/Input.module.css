@@ -262,3 +262,7 @@ textarea.input {
   pointer-events: none;
   color: var(--text-lighter);
 }
+
+.reactSelect {
+  width: 100%;
+}

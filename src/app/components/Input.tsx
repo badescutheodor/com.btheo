@@ -334,7 +334,7 @@ const Input: React.FC<InputProps> = React.memo(
               timeCaption="Time"
               dateFormat={
                 type === "date"
-                  ? "yyyy-MM-dd"
+                  ? "yyyy-MM-dd HH:mm"
                   : type === "time"
                   ? "HH:mm"
                   : "yyyy-MM-dd HH:mm"
