@@ -510,12 +510,12 @@ a:focus {
 }
 
 .rc-md-editor {
-  border: none !important;
+  border-color: var(--gray-200) !important;
   background: var(--bg) !important;
 }
 
 .rc-md-editor .editor-container > .section {
-  border-color: var(--accent) !important;
+  border-color: var(--gray-200) !important;
 }
 
 .md-edit-dark-mode .rc-md-editor .rc-md-navigation {
