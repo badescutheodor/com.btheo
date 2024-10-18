@@ -3,7 +3,7 @@ import { getDB } from '@/lib/db';
 import { Setting } from '@/lib/entities/Setting';
 import { cache } from 'react';
 import { revalidatePath } from 'next/cache';
-import { Repository, FindOptionsWhere, FindOptionsOrder, FindOptionsSelect, FindOptionsRelations, ILike, Between, In, Not, LessThan, LessThanOrEqual, MoreThan, MoreThanOrEqual, Like, IsNull } from 'typeorm';
+import { Repository, FindOptionsWhere, FindOptionsOrder, FindOperator, FindOptionsSelect, FindOptionsRelations, ILike, Between, In, Not, LessThan, LessThanOrEqual, MoreThan, MoreThanOrEqual, Like, IsNull } from 'typeorm';
 
 export async function getCurrentUser() {
   const token = cookies().get('token')?.value;
