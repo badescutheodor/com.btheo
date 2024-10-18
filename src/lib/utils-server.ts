@@ -4,6 +4,7 @@ import { Setting } from '@/lib/entities/Setting';
 import { cache } from 'react';
 import { revalidatePath } from 'next/cache';
 import { Repository, FindOptionsWhere, FindOptionsOrder, FindOperator, FindOptionsSelect, FindOptionsRelations, ILike, Between, In, Not, LessThan, LessThanOrEqual, MoreThan, MoreThanOrEqual, Like, IsNull } from 'typeorm';
+import { BlogPost } from '@/lib/entities/BlogPost';
 
 export async function getCurrentUser() {
   const token = cookies().get('token')?.value;
@@ -416,5 +417,26 @@ export class QueryHandler<T extends ObjectLiteral> {
            'field' in option && 
            'order' in option &&
            (option.order === 'ASC' || option.order === 'DESC');
+  }
+}
+
+export const generateSlug = async (title: string): Promise<string> => {
+  const db = await getDB();
+  const blogPostRepository = db.getRepository(BlogPost);
+  let baseSlug = title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  
+  let slug = baseSlug;
+  let counter = 1;
+
+  while (true) {
+    const existingPost = await blogPostRepository.findOne({ where: { slug } });
+    if (!existingPost) {
+      return slug;
+    }
+    counter++;
+    slug = `${baseSlug}-${counter}`;
   }
 }

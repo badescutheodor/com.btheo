@@ -6,6 +6,7 @@ import { Label } from '@/lib/entities/Label';
 import { QueryHandler, QueryOptions } from '@/lib/utils-server';
 import EntityValidator from '@/lib/entities/EntityValidator';
 import moment from 'moment';
+import { generateSlug } from '@/lib/utils-server';
 
 export async function GET(req: NextRequest) {
   try {
@@ -60,9 +61,10 @@ export async function POST(req: NextRequest) {
     const labelRepository = db.getRepository(Label);
 
     const reqBody = await req.json();
-    const { title, content, date, excerpt, readTime, isFeatured, labels: postLabels, metaTags, status } = reqBody;
+    reqBody.slug = await generateSlug(reqBody.title);
+    reqBody.date = moment(reqBody.date).toDate();
+    let { title, content, date, excerpt, readTime, isFeatured, labels: postLabels, metaTags, status, slug } = reqBody;
     const errors = await EntityValidator.validate(reqBody, BlogPost);
-    const slug = await BlogPost.generateSlug(title);
 
     if (Object.keys(errors).length > 0) {
       return NextResponse.json({ errors }, { status: 400 });
@@ -87,6 +89,7 @@ export async function POST(req: NextRequest) {
     await blogPostRepository.save(blogPost);
     return NextResponse.json(blogPost);
   } catch (error) {
+    console.log(error);
     return NextResponse.json({ message: 'Error creating blog post' }, { status: 500 });
   }
 }

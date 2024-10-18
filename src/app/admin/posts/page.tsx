@@ -141,10 +141,13 @@ const BlogPostsPage: React.FC = () => {
           ...blogPost,
           ...values,
           readTime,
-          excerpt: values.excerpt || values.content.slice(0, 200) + "...",
+          content: values.content || "",
+          excerpt:
+            values.excerpt || (values.content || "").slice(0, 200) + "...",
           status: values.status ? "published" : "draft",
           date: values.date || new Date().toISOString().split("T")[0],
-          labels: values.labels.map((label: any) => ({ id: label.value })),
+          labels:
+            values.labels?.map((label: any) => ({ id: label.value })) || [],
           metaTags: {
             ...blogPost.metaTags,
             ...values.metaTags,
@@ -247,9 +250,6 @@ const BlogPostsPage: React.FC = () => {
                   yup.string().required("Title is required"),
                   yup.string().max(100, "Title must be at most 100 characters"),
                 ],
-              },
-              labels: {
-                rules: [yup.array().min(1, "Labels is required")],
               },
             }}
           >
@@ -385,7 +385,12 @@ const BlogPostsPage: React.FC = () => {
         </div>
         <div className="col-6 text-right">
           <div>
-            <Button onClick={() => setShowModal(true)}>
+            <Button
+              onClick={() => {
+                setShowModal(true);
+                setBlogPost({});
+              }}
+            >
               <FiFilePlus className={"mr-xs"} /> Create new post
             </Button>
           </div>

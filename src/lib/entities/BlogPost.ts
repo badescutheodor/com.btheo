@@ -92,7 +92,7 @@ export class BlogPost {
 
   @ManyToMany(() => Label, (label) => label.posts) 
   @JoinTable()
-  @ArrayMinSize(1)
+  @ArrayMinSize(0)
   labels: Label[];
 
   @Column()
@@ -111,24 +111,4 @@ export class BlogPost {
   @ValidateNested()
   @Type(() => MetaTags)
   metaTags: MetaTags;
-
-  static async generateSlug(title: string): Promise<string> {
-    const blogPostRepository = getRepository(BlogPost);
-    let baseSlug = title
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '');
-    
-    let slug = baseSlug;
-    let counter = 1;
-
-    while (true) {
-      const existingPost = await blogPostRepository.findOne({ where: { slug } });
-      if (!existingPost) {
-        return slug;
-      }
-      counter++;
-      slug = `${baseSlug}-${counter}`;
-    }
-  }
 }

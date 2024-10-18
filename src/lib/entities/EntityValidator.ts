@@ -8,8 +8,13 @@ export class EntityValidator {
     EntityClass: ClassConstructor<T>
   ): Promise<{ [key: string]: string[] }> {
     const db = await getDB();
-    const repository = db.getRepository(EntityClass);
-    const entityWithDefaults = repository.create() as T;
+    const metadata = db.getMetadata(EntityClass);
+    const entityWithDefaults = {};
+    for (const column of metadata.columns) {
+      if (column.default !== undefined && !(column.propertyName in entryData)) {
+        (entityWithDefaults as any)[column.propertyName] = column.default;
+      }
+    }
     const mergedData = { ...entityWithDefaults, ...entryData };
     const entry: any = plainToClass(EntityClass, mergedData);
     const errors = await validate(entry);
