@@ -12,10 +12,14 @@ interface SwitchProps {
 
 const Switch: React.FC<SwitchProps> = React.memo(
   ({ name, label, disabled, checked: propChecked, onChange: propOnChange }) => {
-    const formContext = useForm();
+    let formContext = {};
+    let isControlled = true;
 
-    const isControlled =
-      propChecked !== undefined && propOnChange !== undefined;
+    try {
+      formContext = useForm();
+      isControlled = false;
+    } catch {}
+
     const checked = isControlled ? propChecked : formContext?.values[name];
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {

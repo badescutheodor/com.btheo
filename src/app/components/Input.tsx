@@ -26,6 +26,22 @@ const Switch = lazy(() => import("./Switch"));
 const Checkbox = lazy(() => import("./Checkbox"));
 const Radio = lazy(() => import("./Radio"));
 
+const getNestedValue = (
+  obj: any,
+  path: string,
+  defaultValue: any = undefined
+): any => {
+  const keys = path.split(".");
+  let result = obj;
+  for (const key of keys) {
+    if (result == null || typeof result !== "object") {
+      return defaultValue;
+    }
+    result = result[key];
+  }
+  return result === undefined ? defaultValue : result;
+};
+
 type InputType =
   | "text"
   | "password"
@@ -104,6 +120,18 @@ const Input: React.FC<InputProps> = React.memo(
       formContext = useForm();
     } catch {}
 
+    const getValue = (
+      name: string,
+      isControlled: boolean,
+      propValue: any,
+      formContext: any
+    ) => {
+      if (isControlled) {
+        return propValue;
+      }
+      return getNestedValue(formContext?.values, name);
+    };
+
     const [isFocused, setIsFocused] = useState(autoFocus);
     const inputRef = useRef<
       HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
@@ -112,7 +140,7 @@ const Input: React.FC<InputProps> = React.memo(
 
     const isControlled = propValue !== undefined && propOnChange !== undefined;
 
-    const value = isControlled ? propValue : formContext?.values[name];
+    const value = getValue(name, isControlled, propValue, formContext);
     const error = isControlled ? propError : formContext?.errors[name];
     const touched = isControlled ? true : formContext?.touched[name];
 
@@ -133,7 +161,7 @@ const Input: React.FC<InputProps> = React.memo(
     const handleFocus = () => {
       setIsFocused(true);
       if (!isControlled) {
-        //formContext?.setFieldTouched(name, true);
+        formContext?.setFieldTouched(name, true);
       }
     };
 
@@ -145,7 +173,7 @@ const Input: React.FC<InputProps> = React.memo(
 
         debounceTimerRef.current = setTimeout(() => {
           formContext?.validateField(fieldName, fieldValue);
-        }, 300); // 300ms debounce time
+        }, 300);
       },
       [formContext]
     );
@@ -155,8 +183,8 @@ const Input: React.FC<InputProps> = React.memo(
       if (isControlled) {
         propOnBlur?.();
       } else {
-        formContext?.setFieldTouched(name, true);
-        debouncedValidation(name, value);
+        value && formContext?.setFieldTouched(name, true);
+        touched && debouncedValidation(name, value);
       }
     };
 
@@ -284,7 +312,7 @@ const Input: React.FC<InputProps> = React.memo(
           );
         case "switch":
           return (
-            <Suspense fallback={<div>Loading...</div>}>
+            <Suspense fallback={null}>
               <Switch
                 name={name}
                 checked={!!value}
@@ -296,7 +324,7 @@ const Input: React.FC<InputProps> = React.memo(
           );
         case "checkbox":
           return (
-            <Suspense fallback={<div>Loading...</div>}>
+            <Suspense fallback={null}>
               <Checkbox
                 name={name}
                 checked={!!value}
@@ -308,7 +336,7 @@ const Input: React.FC<InputProps> = React.memo(
           );
         case "radio":
           return (
-            <Suspense fallback={<div>Loading...</div>}>
+            <Suspense fallback={null}>
               <Radio
                 name={name}
                 checked={!!value}
@@ -359,6 +387,7 @@ const Input: React.FC<InputProps> = React.memo(
             <SelectComponent
               options={options}
               value={value}
+              name={name}
               onChange={(newValue) => handleChange(newValue)}
               onBlur={handleBlur}
               isDisabled={disabled}

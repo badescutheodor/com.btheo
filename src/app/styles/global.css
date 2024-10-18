@@ -1329,3 +1329,9 @@ a:focus {
   color: var(--text-lightest) !important;
   font-size: var(--small-size) !important;
 }
+
+@media (max-width: 768px) {
+  .xs-mt-md {
+    margin-top: var(--spacing-md) !important;
+  }
+}

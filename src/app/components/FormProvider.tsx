@@ -68,7 +68,22 @@ export const FormProvider: React.FC<FormProviderProps> = ({
   const [serverValidationFailed, setServerValidationFailed] = useState(false);
 
   const setFieldValue = useCallback((name: string, value: unknown) => {
-    setValues((prevValues) => ({ ...prevValues, [name]: value }));
+    setValues((prevValues) => {
+      const keys = name.split(".");
+      const lastKey = keys.pop()!;
+      let current: any = prevValues;
+
+      for (const key of keys) {
+        if (!(key in current)) {
+          current[key] = {};
+        }
+        current = current[key];
+      }
+
+      current[lastKey] = value;
+
+      return { ...prevValues };
+    });
   }, []);
 
   const setFieldTouched = useCallback((name: string, isTouched: boolean) => {
@@ -220,6 +235,7 @@ export const FormProvider: React.FC<FormProviderProps> = ({
       submitForm,
       isSubmitted,
       resetSubmissionState,
+      setValues,
       done:
         isSubmitted &&
         !clientValidationFailed &&
@@ -232,6 +248,7 @@ export const FormProvider: React.FC<FormProviderProps> = ({
       values,
       errors,
       touched,
+      setValues,
       isSubmitting,
       setFieldValue,
       setFieldTouched,

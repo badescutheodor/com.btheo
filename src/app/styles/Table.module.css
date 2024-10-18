@@ -1,0 +1,26 @@
+.table {
+  margin-top: var(--spacing-lg);
+  width: 100%;
+}
+
+.table table {
+  width: 100%;
+}
+
+.table th {
+  font-size: var(--small-size);
+  text-align: left;
+}
+
+.table td,
+.table td > div {
+  font-size: var(--small-size);
+}
+
+.actionDropdown ul {
+  margin-left: -130px;
+}
+
+.actionDropdown ul li span {
+  display: flex;
+}

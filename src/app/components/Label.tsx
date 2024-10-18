@@ -8,12 +8,7 @@ interface LabelProps {
   children: React.ReactNode;
 }
 
-export const Label: React.FC<LabelProps> = ({
-  htmlFor,
-  href,
-  onClick,
-  children,
-}) => {
+const Label: React.FC<LabelProps> = ({ htmlFor, href, onClick, children }) => {
   if (href || onClick) {
     return (
       <a
@@ -32,3 +27,5 @@ export const Label: React.FC<LabelProps> = ({
     </div>
   );
 };
+
+export default Label;

@@ -7,6 +7,7 @@ import cx from "classnames";
 interface Option {
   value?: string;
   label?: string;
+  labelClassName?: string;
   href?: string;
   onClick?: () => void;
 }
@@ -16,6 +17,8 @@ interface DropdownProps {
   onSelect: (option: Option) => void;
   children?: React.ReactNode;
   className?: string;
+  withCaret: boolean;
+  menuOpen?: boolean;
 }
 
 const Dropdown: React.FC<DropdownProps> = ({
@@ -23,6 +26,8 @@ const Dropdown: React.FC<DropdownProps> = ({
   onSelect,
   children,
   className,
+  withCaret = true,
+  menuOpen,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedOption, setSelectedOption] = useState<Option | null>(null);
@@ -70,11 +75,11 @@ const Dropdown: React.FC<DropdownProps> = ({
             ? selectedOption.label
             : "Select an option"}
         </span>
-        {isOpen ? <FiChevronUp /> : <FiChevronDown />}
+        {withCaret ? isOpen ? <FiChevronUp /> : <FiChevronDown /> : null}
       </div>
       <ul
         className={cx(styles.dropdownMenu, {
-          [styles.open]: isOpen,
+          [styles.open]: isOpen || menuOpen,
         })}
       >
         {options.map((option, index) => (
@@ -84,11 +89,18 @@ const Dropdown: React.FC<DropdownProps> = ({
             onClick={() => handleSelect(option)}
           >
             {option.href ? (
-              <Link href={option.href}>{option.label}</Link>
+              <Link href={option.href} className={cx(option.labelClassName)}>
+                {option.label}
+              </Link>
             ) : option.onClick ? (
-              <span onClick={option.onClick}>{option.label}</span>
+              <span
+                onClick={option.onClick}
+                className={cx(option.labelClassName)}
+              >
+                {option.label}
+              </span>
             ) : (
-              <span>{option.label}</span>
+              <span className={cx(option.labelClassName)}>{option.label}</span>
             )}
           </li>
         ))}

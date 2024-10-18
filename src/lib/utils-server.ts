@@ -122,7 +122,7 @@ interface FilterOperators {
   $null?: boolean;
 }
 
-interface QueryOptions<T extends ObjectLiteral> {
+export interface QueryOptions<T extends ObjectLiteral> {
   page?: number;
   limit?: number;
   sort?: string;
@@ -133,21 +133,42 @@ interface QueryOptions<T extends ObjectLiteral> {
 
 export class QueryHandler<T extends ObjectLiteral> {
   private roleFields: Record<string, SafeDotNotation<T>[]> = {};
+  private fieldRenames: Record<string, Record<string, string>> = {};
 
   constructor(private repository: Repository<T>) {}
 
   setRoleFields(role: string, fields: SafeDotNotation<T>[]) {
     this.roleFields[role] = fields;
+    this.fieldRenames[role] = {};
+
+    fields.forEach(field => {
+      const [path, rename] = (field as string).split(':');
+      if (rename) {
+        this.fieldRenames[role][path] = rename;
+        this.roleFields[role] = this.roleFields[role].filter(f => f !== field);
+        this.roleFields[role].push(path as SafeDotNotation<T>);
+      }
+    });
   }
 
- async filterMulti(options: QueryOptions<T>, relations: FindOptionsRelations<T> = {}, role?: string) {
+  async filterMulti(options: QueryOptions<T>, relations: string[] = [], role?: string) {
+    const result = await this.executeFilterMulti(options, relations, role);
+    return this.applyFieldRenames(result, role);
+  }
+
+  async filterOne(options: QueryOptions<T>, relations: string[] = [], role?: string): Promise<T | null> {
+    const result = await this.executeFilterOne(options, relations, role);
+    return result ? this.applyFieldRenames({ data: [result] }, role).data[0] : null;
+  }
+
+  private async executeFilterMulti(options: QueryOptions<T>, relations: string[] = [], role?: string) {
     const where = this.buildWhereClause(options);
     const order = this.buildOrderClause(options.sort);
     const select = this.buildSelectClause(role);
     
     const [items, total] = await this.repository.findAndCount({
       where,
-      relations,
+      relations: this.parseRelations(relations),
       order,
       skip: ((options.page || 1) - 1) * (options.limit || 10),
       take: options.limit || 10,
@@ -165,23 +186,104 @@ export class QueryHandler<T extends ObjectLiteral> {
     };
   }
 
-  async filterOne(options: QueryOptions<T>, relations: FindOptionsRelations<T> = {}, role?: string): Promise<T | null> {
+  private async executeFilterOne(options: QueryOptions<T>, relations: string[] = [], role?: string): Promise<T | null> {
     const where = this.buildWhereClause(options);
     const order = this.buildOrderClause(options.sort);
     const select = this.buildSelectClause(role);
 
-    const entity = await this.repository.findOne({
+    return await this.repository.findOne({
       where,
-      relations,
+      relations: this.parseRelations(relations),
       order,
       select,
     });
+  }
 
-    return entity;
+  private parseRelations(relations: string[]): FindOptionsRelations<T> {
+    const parsedRelations: FindOptionsRelations<T> = {};
+    relations.forEach(relation => {
+      const parts = relation.split('.');
+      let current: any = parsedRelations;
+      parts.forEach((part, index) => {
+        if (index === parts.length - 1) {
+          current[part] = true;
+        } else {
+          current[part] = current[part] || {};
+          current = current[part];
+        }
+      });
+    });
+    return parsedRelations;
+  }
+
+  private applyFieldRenames(result: { data: T[], meta?: any }, role?: string): { data: any[], meta?: any } {
+    if (!role || !this.fieldRenames[role]) return result;
+
+    const selectList = this.roleFields[role] || [];
+
+    const renamedData = result.data.map(item => {
+      const renamedItem: any = JSON.parse(JSON.stringify(item)); // Deep clone to avoid modifying original data
+      const fieldsToDelete: string[] = [];
+
+      for (const [path, newName] of Object.entries(this.fieldRenames[role])) {
+        const parts = path.split('.');
+        let value = renamedItem;
+        let parent = null;
+        let lastValidIndex = -1;
+
+        for (let i = 0; i < parts.length; i++) {
+          if (value && typeof value === 'object' && parts[i] in value) {
+            parent = value;
+            value = value[parts[i]];
+            lastValidIndex = i;
+          } else {
+            break;
+          }
+        }
+
+        if (lastValidIndex === parts.length - 1) {
+          renamedItem[newName] = value;
+          fieldsToDelete.push(path);
+        }
+      }
+
+      // Delete original fields
+      fieldsToDelete.forEach(path => {
+        const parts = path.split('.');
+        let current = renamedItem;
+        for (let i = 0; i < parts.length - 1; i++) {
+          if (current[parts[i]] === undefined) break;
+          current = current[parts[i]];
+        }
+        delete current[parts[parts.length - 1]];
+      });
+
+      // Clean up empty objects, but preserve 'labels' if it's in the select list
+      const cleanupEmptyObjects = (obj: any) => {
+        for (const key in obj) {
+          if (key === 'labels' && selectList.includes('labels')) {
+            // Ensure 'labels' is always an array if it's in the select list
+            obj[key] = Array.isArray(obj[key]) ? obj[key] : [];
+            continue;
+          }
+          if (typeof obj[key] === 'object' && obj[key] !== null) {
+            cleanupEmptyObjects(obj[key]);
+            if (Object.keys(obj[key]).length === 0) {
+              delete obj[key];
+            }
+          }
+        }
+      };
+      cleanupEmptyObjects(renamedItem);
+
+      return renamedItem;
+    });
+
+    return { ...result, data: renamedData };
   }
 
   private buildWhereClause(options: QueryOptions<T>): FindOptionsWhere<T> {
-    const where: FindOptionsWhere<T> = {};
+    let where: FindOptionsWhere<T> = {};
 
     if (options.filters) {
       Object.assign(where, this.parseFilters(options.filters));
@@ -191,9 +293,25 @@ export class QueryHandler<T extends ObjectLiteral> {
       const searchConditions: FindOptionsWhere<T>[] = options.searchFields.map(field => ({
         [field]: ILike(`%${options.search}%`)
       } as FindOptionsWhere<T>));
-
-      if (searchConditions.length > 0) {
-        Object.assign(where, searchConditions.length === 1 ? searchConditions[0] : { $or: searchConditions });
+      if (searchConditions.length === 1) {
+        Object.assign(where, searchConditions[0]);
+      } else if (searchConditions.length > 1) {
+        where = searchConditions.reduce((acc, condition) => {
+          return Object.keys(condition).reduce((innerAcc, key) => {
+            if (!innerAcc[key]) {
+              innerAcc[key] = [];
+            }
+            innerAcc[key].push(condition[key]);
+            return innerAcc;
+          }, acc);
+        }, {} as Record<string, any>);
+      
+        // Convert arrays to TypeORM's In operator
+        Object.keys(where).forEach(key => {
+          if (Array.isArray(where[key])) {
+            where[key] = { $in: where[key] };
+          }
+        });
       }
     }
 

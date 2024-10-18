@@ -6,19 +6,23 @@ import MarkdownIt from "markdown-it";
 import hljs from "highlight.js";
 import "highlight.js/styles/github.css";
 import { confirm } from "@/lib/utils-client";
-import { FiFilePlus } from "react-icons/fi";
+import { FiFilePlus, FiEye, FiTrash2, FiEdit } from "react-icons/fi";
 import Modal from "@/app/components/Modal";
 import Button from "@/app/components/Button";
 import Input from "@/app/components/Input";
 import { FormProvider } from "@/app/components/FormProvider";
 import Accordion from "@/app/components/Accordion";
+import * as yup from "yup";
+import moment from "moment";
+import Switch from "@/app/components/Switch";
+import Label from "@/app/components/Label";
 
 const MdEditor = dynamic(() => import("react-markdown-editor-lite"), {
   ssr: false,
 });
 
 import "react-markdown-editor-lite/lib/index.css";
-import { In } from "typeorm";
+import Table from "@/app/components/Table";
 
 interface Label {
   id: number;
@@ -52,6 +56,7 @@ interface BlogPost {
 const BlogPostsPage: React.FC = () => {
   const { user } = useUser();
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
+  const [blogMeta, setBlogMeta] = useState<any>({});
   const [labels, setLabels] = useState<{ value: string; label: string }[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [blogPost, setBlogPost] = useState<Partial<BlogPost>>({
@@ -79,6 +84,7 @@ const BlogPostsPage: React.FC = () => {
 
   const calculateReadTime = useCallback((content: string): string => {
     const wordsPerMinute = 200;
+    content = content || "";
     const wordCount = content.trim().split(/\s+/).length;
     const readTime = Math.ceil(wordCount / wordsPerMinute);
     return `${readTime} min read`;
@@ -95,6 +101,7 @@ const BlogPostsPage: React.FC = () => {
       if (response.ok) {
         const posts = await response.json();
         setBlogPosts(posts.data);
+        setBlogMeta(posts.meta);
       } else {
         throw new Error("Failed to fetch blog posts");
       }
@@ -111,7 +118,7 @@ const BlogPostsPage: React.FC = () => {
         const data = await response.json();
         setLabels(
           data.map((label: Label) => ({
-            value: label.id.toString(),
+            value: label.id,
             label: label.name,
           }))
         );
@@ -128,14 +135,37 @@ const BlogPostsPage: React.FC = () => {
     try {
       const readTime = calculateReadTime(values.content);
       const response = await fetch("/api/posts", {
-        method: "PUT",
+        method: blogPost.id ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...blogPost, readTime }),
+        body: JSON.stringify({
+          ...blogPost,
+          ...values,
+          readTime,
+          excerpt: values.excerpt || values.content.slice(0, 200) + "...",
+          status: values.status ? "published" : "draft",
+          date: values.date || new Date().toISOString().split("T")[0],
+          labels: values.labels.map((label: any) => ({ id: label.value })),
+          metaTags: {
+            ...blogPost.metaTags,
+            ...values.metaTags,
+            keywords:
+              values.metaTags?.keywords?.map((keyword) => keyword.value) || [],
+          },
+        }),
       });
 
       if (response.ok) {
         await fetchBlogPosts();
-        setBlogPost({});
+        setBlogPost({
+          title: "",
+          content: "",
+          excerpt: "",
+          date: new Date().toISOString().split("T")[0],
+          readTime: "",
+          isFeatured: false,
+          labels: [],
+          metaTags: {},
+        });
         setShowModal(false);
       } else {
         const data = await response.json();
@@ -149,10 +179,26 @@ const BlogPostsPage: React.FC = () => {
     }
   };
 
-  const handleDeleteBlogPost = async (id: number) => {
+  const setBlogPostForEdit = (post: any) => {
+    post.labels = post.labels.map((label: any) => ({
+      value: label.id,
+      label: label.name,
+    }));
+
+    if (post.metaTags?.keywords) {
+      post.metaTags.keywords = post.metaTags.keywords.map((keyword: any) => ({
+        value: keyword,
+        label: keyword,
+      }));
+    }
+
+    setBlogPost(post);
+  };
+
+  const handleDeleteBlogPost = async (post: any) => {
     const ok = await confirm({
       title: "Are you sure?",
-      message: "Do you really want to delete this blog post?",
+      message: `Do you really want to delete this blog post (${post.title})?`,
     });
 
     if (!ok) {
@@ -163,7 +209,7 @@ const BlogPostsPage: React.FC = () => {
       const response = await fetch("/api/posts", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id }),
+        body: JSON.stringify({ id: post.id }),
       });
       if (response.ok) {
         await fetchBlogPosts();
@@ -187,13 +233,27 @@ const BlogPostsPage: React.FC = () => {
     <div>
       <Modal
         isOpen={showModal}
-        onClose={() => {}}
+        onClose={() => setShowModal(false)}
         fullScreen
         title={`${blogPost.id ? "Edit Post" : "Add Post"}`}
       >
         <div className={"mt-md"}>
-          <FormProvider onSubmit={handleBlogPost}>
-            {(values) => {
+          <FormProvider
+            onSubmit={handleBlogPost}
+            initialValues={blogPost.id ? blogPost : {}}
+            validationSchema={{
+              title: {
+                rules: [
+                  yup.string().required("Title is required"),
+                  yup.string().max(100, "Title must be at most 100 characters"),
+                ],
+              },
+              labels: {
+                rules: [yup.array().min(1, "Labels is required")],
+              },
+            }}
+          >
+            {({ values, submitForm, setFieldValue }) => {
               return (
                 <div className="row editor-row">
                   <div className="col-lg-8">
@@ -204,76 +264,69 @@ const BlogPostsPage: React.FC = () => {
                           minHeight: 500,
                           marginBottom: 30,
                         }}
+                        autoFocus
                         renderHTML={(text) => mdParser.render(text)}
-                        onChange={handleEditorChange}
-                        value={blogPost.content}
+                        onChange={(value) =>
+                          setFieldValue("content", value.text)
+                        }
+                        value={values.content}
                       />
                     </div>
                   </div>
-                  <div className="col-lg-4">
+                  <div className="col-lg-4 xs-mt-md">
                     <div>
-                      <Button
-                        type="submit"
-                        color="primary"
-                        fullWidth
-                        className="mb-lg"
-                      >
-                        Save
-                      </Button>
+                      <div className="row">
+                        <div className="col-lg-6">
+                          <div>
+                            <Button
+                              type="submit"
+                              color="primary"
+                              fullWidth
+                              className="mb-lg"
+                              onClick={submitForm}
+                            >
+                              Save
+                            </Button>
+                          </div>
+                        </div>
+                        <div className="col-lg-6">
+                          <div>
+                            <Button
+                              type="submit"
+                              color="primary"
+                              fullWidth
+                              inverted
+                              className="mb-lg"
+                            >
+                              <FiEye className="mr-xs" />
+                              Preview
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
                       <Input
                         name="title"
                         type="text"
                         maxLength={100}
-                        placeholder="Title"
-                        value={blogPost.title}
-                        onChange={(value) =>
-                          setBlogPost({
-                            ...blogPost,
-                            title: value,
-                          })
-                        }
+                        placeholder="Title *"
                       />
                       <Input
                         name="excerpt"
                         type="textarea"
                         placeholder="Excerpt"
-                        value={blogPost.excerpt}
                         maxLength={200}
-                        onChange={(value) =>
-                          setBlogPost({
-                            ...blogPost,
-                            excerpt: value,
-                          })
-                        }
                       />
                       <div className="flex">
                         <Input
                           type="switch"
                           label="Featured"
                           name="isFeatured"
-                          onChange={(value) => {
-                            setBlogPost({
-                              ...blogPost,
-                              isFeatured: value,
-                            });
-                          }}
                         />
-                        <Input
-                          type="switch"
-                          label="Published"
-                          name="status"
-                          onChange={(value) => {
-                            setBlogPost({
-                              ...blogPost,
-                              status: value ? "published" : "draft",
-                            });
-                          }}
-                        />
+                        <Input type="switch" label="Published" name="status" />
                       </div>
                       <Input
                         type="date"
                         name="date"
-                        value={blogPost.date}
                         placeholder="Created date"
                       />
                       <Input
@@ -289,94 +342,33 @@ const BlogPostsPage: React.FC = () => {
                           name="metaTags.title"
                           type="text"
                           placeholder="Title"
-                          value={blogPost.metaTags?.title}
-                          onChange={(value) =>
-                            setBlogPost({
-                              ...blogPost,
-                              metaTags: {
-                                ...blogPost.metaTags,
-                                title: value,
-                              },
-                            })
-                          }
                         />
                         <Input
                           name="metaTags.description"
                           type="textarea"
                           placeholder="Description"
-                          value={blogPost.metaTags?.description}
-                          onChange={(value) =>
-                            setBlogPost({
-                              ...blogPost,
-                              metaTags: {
-                                ...blogPost.metaTags,
-                                description: value,
-                              },
-                            })
-                          }
                         />
                         <Input
                           name="metaTags.keywords"
                           type="react-select-creatable"
                           label="Keywords"
                           placeholder=""
-                          options={[]}
-                          onChange={(value) => {
-                            console.log(value);
-                            setBlogPost({
-                              ...blogPost,
-                              metaTags: {
-                                ...blogPost.metaTags,
-                                keywords: value,
-                              },
-                            });
-                          }}
                           isMulti
                         />
                         <Input
                           name="metaTags.ogImage"
                           type="text"
                           placeholder="OG Image"
-                          value={blogPost.metaTags?.ogImage}
-                          onChange={(value) =>
-                            setBlogPost({
-                              ...blogPost,
-                              metaTags: {
-                                ...blogPost.metaTags,
-                                ogImage: value,
-                              },
-                            })
-                          }
                         />
                         <Input
                           name="metaTags.ogTitle"
                           type="text"
                           placeholder="OG Title"
-                          value={blogPost.metaTags?.ogTitle}
-                          onChange={(value) =>
-                            setBlogPost({
-                              ...blogPost,
-                              metaTags: {
-                                ...blogPost.metaTags,
-                                ogTitle: value,
-                              },
-                            })
-                          }
                         />
                         <Input
                           name="metaTags.ogDescription"
                           type="text"
                           placeholder="OG Description"
-                          value={blogPost.metaTags?.ogDescription}
-                          onChange={(value) =>
-                            setBlogPost({
-                              ...blogPost,
-                              metaTags: {
-                                ...blogPost.metaTags,
-                                ogDescription: value,
-                              },
-                            })
-                          }
                         />
                       </Accordion>
                     </div>
@@ -399,46 +391,90 @@ const BlogPostsPage: React.FC = () => {
           </div>
         </div>
       </div>
-      <ul>
-        {blogPosts.map((blogPost) => (
-          <li key={blogPost.id}>
-            <>
-              <h3>{blogPost.title}</h3>
-              <p>Author: {blogPost.author.name}</p>
-              <p>Date: {blogPost.date}</p>
-              <p>Read Time: {blogPost.readTime}</p>
-              <p>Featured: {blogPost.isFeatured ? "Yes" : "No"}</p>
-              <p>
-                Labels: {blogPost.labels.map((label) => label.name).join(", ")}
-              </p>
-              <div>
-                <h4>Meta Tags:</h4>
-                <p>Title: {blogPost.metaTags?.title}</p>
-                <p>Description: {blogPost.metaTags?.description}</p>
-                <p>Keywords: {blogPost.metaTags?.keywords?.join(", ")}</p>
-                <p>OG Image: {blogPost.metaTags?.ogImage}</p>
-                <p>OG Title: {blogPost.metaTags?.ogTitle}</p>
-                <p>OG Description: {blogPost.metaTags?.ogDescription}</p>
-              </div>
-              <div
-                dangerouslySetInnerHTML={{
-                  __html: mdParser.render(blogPost.content),
-                }}
-              />
-              {(user.id === blogPost.author.id || user.role === "admin") && (
-                <div>
-                  <button onClick={() => setEditingBlogPost(blogPost)}>
-                    Edit
-                  </button>
-                  <button onClick={() => handleDeleteBlogPost(blogPost.id)}>
-                    Delete
-                  </button>
-                </div>
-              )}
-            </>
-          </li>
-        ))}
-      </ul>
+      <Table
+        fields={[
+          {
+            name: "id",
+            key: "id",
+            label: "ID",
+            sortable: true,
+          },
+          {
+            name: "Title",
+            key: "title",
+            label: "Title",
+            sortable: true,
+            style: {
+              maxWidth: 120,
+            },
+          },
+          {
+            name: "Date",
+            key: "date",
+            label: "Date",
+            transform: (value: string) => moment(value).format("DD MMM YYYY"),
+            sortable: true,
+          },
+          {
+            name: "Author",
+            key: "author",
+            label: "Author",
+            sortable: true,
+          },
+          {
+            name: "Labels",
+            key: "labels",
+            label: "Labels",
+            sortable: false,
+            transform: (value: any) =>
+              value.map((label: any) => (
+                <Label key={label.id}>{label.name}</Label>
+              )),
+          },
+          {
+            name: "Is Featured",
+            key: "isFeatured",
+            label: "Is Featured",
+            transform: (value) => <Switch checked={value} />,
+            sortable: true,
+          },
+          {
+            name: "Published",
+            key: "status",
+            label: "Published",
+            transform: (value) => <Switch checked={value === "published"} />,
+            sortable: true,
+          },
+        ]}
+        actions={[
+          {
+            key: "edit",
+            label: (
+              <>
+                <FiEdit className="mr-xs" />
+                Edit
+              </>
+            ),
+            onClick: (item: any) => {
+              setBlogPostForEdit(item);
+              setShowModal(true);
+            },
+          },
+          {
+            key: "delete",
+            labelClassName: "error",
+            label: (
+              <>
+                <FiTrash2 className="mr-xs" />
+                Delete
+              </>
+            ),
+            onClick: (item: any) => handleDeleteBlogPost(item),
+          },
+        ]}
+        meta={blogMeta}
+        data={blogPosts}
+      />
     </div>
   );
 };

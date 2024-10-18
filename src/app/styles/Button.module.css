@@ -125,8 +125,8 @@
 
 .inverted.primary {
   background-color: transparent;
-  color: var(--btn-text);
-  border: 1px solid var(--btn-text);
+  color: var(--btn-bg);
+  border: 1px solid var(--btn-bg);
 }
 
 .inverted.primary:hover:not(:disabled),

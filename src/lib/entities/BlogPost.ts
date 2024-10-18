@@ -1,6 +1,6 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, ManyToMany, JoinTable, OneToMany, CreateDateColumn } from "typeorm";
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, ManyToMany, JoinTable, OneToMany, CreateDateColumn, getRepository } from "typeorm";
 import { IsNotEmpty, IsString, IsDate, IsInt, Min, IsBoolean, IsUrl, IsOptional, ValidateNested, IsEnum, ArrayMinSize, validate, ValidationError } from "class-validator";
-import { Type, plainToClass } from "class-transformer";
+import { Type, plainToClass, ClassConstructor } from "class-transformer";
 import type { Relation } from "typeorm";
 import { User } from "./User";
 import { Label } from "./Label";
@@ -112,15 +112,23 @@ export class BlogPost {
   @Type(() => MetaTags)
   metaTags: MetaTags;
 
-  static async validate(entryData: Partial<BlogPost>): Promise<{ [key: string]: string[] }> {
-    const entry = plainToClass(BlogPost, entryData);
-    const errors = await validate(entry);
+  static async generateSlug(title: string): Promise<string> {
+    const blogPostRepository = getRepository(BlogPost);
+    let baseSlug = title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
     
-    return errors.reduce((acc, error: ValidationError) => {
-      if (error.property && error.constraints) {
-        acc[error.property] = Object.values(error.constraints);
+    let slug = baseSlug;
+    let counter = 1;
+
+    while (true) {
+      const existingPost = await blogPostRepository.findOne({ where: { slug } });
+      if (!existingPost) {
+        return slug;
       }
-      return acc;
-    }, {} as { [key: string]: string[] });
-} 
+      counter++;
+      slug = `${baseSlug}-${counter}`;
+    }
+  }
 }

@@ -4,6 +4,8 @@ import { getDB } from '@/lib/db';
 import { BlogPost } from '@/lib/entities/BlogPost';
 import { Label } from '@/lib/entities/Label';
 import { QueryHandler, QueryOptions } from '@/lib/utils-server';
+import EntityValidator from '@/lib/entities/EntityValidator';
+import moment from 'moment';
 
 export async function GET(req: NextRequest) {
   try {
@@ -18,7 +20,7 @@ export async function GET(req: NextRequest) {
     ]);
 
     queryHandler.setRoleFields('admin', [
-      'id', 'title', 'content', 'excerpt', 'date', 'readTime', 'views', 'isFeatured', 'slug', 'metaTags'
+      'id', 'title', 'content', 'excerpt', 'date', 'labels', 'author.avatar:avatar', 'author.name:author', 'readTime', 'views', 'isFeatured', 'slug', 'metaTags', 'status'
     ]);
 
     const url = new URL(req.url);
@@ -27,15 +29,20 @@ export async function GET(req: NextRequest) {
       limit: parseInt(url.searchParams.get('limit') || '10', 10),
       sort: url.searchParams.get('sort') || undefined,
       search: url.searchParams.get('search') || undefined,
-      searchFields: ['title'],
+      searchFields: ['title', 'excerpt', 'content'],
       filters: url.searchParams.get('label') 
-        ? { labels: [{ name: url.searchParams.get('label') }] }
+        ? { 
+          labels: [{ name: url.searchParams.get('label') }],
+          isFeatured: url.searchParams.get('isFeatured') === 'true' ? true : undefined,
+          status: url.searchParams.get('status') || undefined,
+        }
         : undefined,
     };
 
-    const result = await queryHandler.filterMulti(options, ['author', 'author.avatar', 'labels'], user?.role);
+    const result = await queryHandler.filterMulti(options, ['author', 'labels'], user?.role);
     return NextResponse.json(result);
-  } catch {
+  } catch(e) {
+    console.log(e);
     return NextResponse.json({ message: 'Error fetching blog posts' }, { status: 500 });
   }
 }
@@ -53,14 +60,14 @@ export async function POST(req: NextRequest) {
     const labelRepository = db.getRepository(Label);
 
     const reqBody = await req.json();
-    const { title, content, date, excerpt, readTime, isFeatured, labels: postLabels, metaTags } = reqBody;
+    const { title, content, date, excerpt, readTime, isFeatured, labels: postLabels, metaTags, status } = reqBody;
+    const errors = await EntityValidator.validate(reqBody, BlogPost);
+    const slug = await BlogPost.generateSlug(title);
 
-    const errors = await BlogPost.validate(reqBody);
-    
     if (Object.keys(errors).length > 0) {
       return NextResponse.json({ errors }, { status: 400 });
     }
-
+   
     const labels = await labelRepository.findByIds(postLabels.map((label: any) => label.id));
 
     const blogPost = blogPostRepository.create({
@@ -71,8 +78,9 @@ export async function POST(req: NextRequest) {
       excerpt,
       isFeatured,
       author: { id: user.id },
+      status: status || 'draft',
       labels,
-      slug: title.toLowerCase().replace(/ /g, '-'),
+      slug,
       metaTags: metaTags || {},
     });
 
@@ -94,7 +102,7 @@ export async function PUT(req: NextRequest) {
     const blogPostRepository = db.getRepository(BlogPost);
     const labelRepository = db.getRepository(Label);
 
-    const { id, title, content, date, readTime, isFeatured, labelIds, metaTags } = await req.json();
+    const { id, title, content, date, excerpt, readTime, isFeatured, status, labels: labelIds, metaTags } = await req.json();
 
     const blogPost = await blogPostRepository.findOne({
       where: { id },
@@ -109,18 +117,24 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 403 });
     }
 
-    const labels = await labelRepository.findByIds(labelIds);
+    const labels = await labelRepository.findByIds(labelIds.map((label: any) => label.id));
 
     blogPost.title = title;
     blogPost.content = content;
-    blogPost.date = date;
+    blogPost.date = moment(date).toDate();
     blogPost.readTime = readTime;
     blogPost.isFeatured = isFeatured;
     blogPost.labels = labels;
     blogPost.metaTags = metaTags;
+    blogPost.status = status;
+    blogPost.excerpt = excerpt;
+    blogPost.metaTags = {
+      ...blogPost.metaTags,
+      ...metaTags,
+    }
 
-    const errors = await BlogPost.validate(blogPost);
-    
+    const errors = await EntityValidator.validate(blogPost, BlogPost);
+
     if (Object.keys(errors).length > 0) {
       return NextResponse.json({ errors }, { status: 400 });
     }
@@ -128,6 +142,7 @@ export async function PUT(req: NextRequest) {
     await blogPostRepository.save(blogPost);
     return NextResponse.json(blogPost);
   } catch (error) {
+    console.log(error);
     return NextResponse.json({ message: 'Error updating blog post' }, { status: 500 });
   }
 }
