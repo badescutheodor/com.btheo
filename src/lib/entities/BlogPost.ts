@@ -48,12 +48,10 @@ export class BlogPost {
   title: string;
 
   @Column("text")
-  @IsNotEmpty()
   @IsString()
   content: string;
 
   @Column("text")
-  @IsNotEmpty()
   @IsString()
   excerpt: string;
 

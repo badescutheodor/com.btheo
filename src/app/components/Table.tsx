@@ -64,7 +64,6 @@ const Table: React.FC<TableProps> = ({
                     <td>
                       <Dropdown
                         className={styles.actionDropdown}
-                        menuOpen
                         options={actions.map((action) => {
                           return {
                             labelClassName: action.labelClassName,

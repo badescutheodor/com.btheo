@@ -24,3 +24,24 @@
 .actionDropdown ul li span {
   display: flex;
 }
+
+.table td {
+  border-collapse: separate;
+}
+
+.table thead tr {
+  padding-bottom: 30px;
+}
+
+.table tbody tr:nth-child(even) {
+  background: var(--gray-100);
+}
+
+.table td,
+.table th {
+  padding: 4px 10px;
+}
+
+.table table {
+  border-collapse: collapse;
+}

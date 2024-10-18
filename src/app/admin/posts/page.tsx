@@ -183,19 +183,23 @@ const BlogPostsPage: React.FC = () => {
   };
 
   const setBlogPostForEdit = (post: any) => {
-    post.labels = post.labels.map((label: any) => ({
+    const newPost = {
+      ...post,
+    };
+
+    newPost.labels = post.labels.map((label: any) => ({
       value: label.id,
       label: label.name,
     }));
 
-    if (post.metaTags?.keywords) {
+    if (newPost.metaTags?.keywords) {
       post.metaTags.keywords = post.metaTags.keywords.map((keyword: any) => ({
         value: keyword,
         label: keyword,
       }));
     }
 
-    setBlogPost(post);
+    setBlogPost(newPost);
   };
 
   const handleDeleteBlogPost = async (post: any) => {
