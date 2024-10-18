@@ -153,11 +153,13 @@ export class QueryHandler<T extends ObjectLiteral> {
   }
 
   async filterMulti(options: QueryOptions<T>, relations: string[] = [], role?: string) {
+    role = role || 'public';
     const result = await this.executeFilterMulti(options, relations, role);
     return this.applyFieldRenames(result, role);
   }
 
   async filterOne(options: QueryOptions<T>, relations: string[] = [], role?: string): Promise<T | null> {
+    ole = role || 'public';
     const result = await this.executeFilterOne(options, relations, role);
     return result ? this.applyFieldRenames({ data: [result] }, role).data[0] : null;
   }
@@ -259,24 +261,18 @@ export class QueryHandler<T extends ObjectLiteral> {
         delete current[parts[parts.length - 1]];
       });
 
-      // Clean up empty objects, but preserve 'labels' if it's in the select list
       const cleanupEmptyObjects = (obj: any) => {
         for (const key in obj) {
-          if (key === 'labels' && selectList.includes('labels')) {
-            // Ensure 'labels' is always an array if it's in the select list
-            obj[key] = Array.isArray(obj[key]) ? obj[key] : [];
-            continue;
-          }
           if (typeof obj[key] === 'object' && obj[key] !== null) {
             cleanupEmptyObjects(obj[key]);
-            if (Object.keys(obj[key]).length === 0) {
+            if (Object.keys(obj[key]).length === 0 && !Array.isArray(obj[key])) {
               delete obj[key];
             }
           }
         }
       };
+      
       cleanupEmptyObjects(renamedItem);
-
       return renamedItem;
     });
 

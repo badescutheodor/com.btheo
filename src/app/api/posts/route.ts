@@ -15,9 +15,8 @@ export async function GET(req: NextRequest) {
     const blogPostRepository = db.getRepository(BlogPost);
     const queryHandler = new QueryHandler(blogPostRepository);
 
-    // Set up role-based field selection with dot notation
-    queryHandler.setRoleFields('public', [
-      'id', 'title', 'excerpt', 'date', 'readTime', 'views', 'isFeatured', 'slug'
+    queryHandler.setRoleFields('public', [ 
+      'id', 'title', 'excerpt', 'date', 'readTime', 'views', 'isFeatured', 'slug', 'author.name:author', 'labels.name'
     ]);
 
     queryHandler.setRoleFields('admin', [
@@ -31,13 +30,11 @@ export async function GET(req: NextRequest) {
       sort: url.searchParams.get('sort') || undefined,
       search: url.searchParams.get('search') || undefined,
       searchFields: ['title', 'excerpt', 'content'],
-      filters: url.searchParams.get('label') 
-        ? { 
-          labels: [{ name: url.searchParams.get('label') }],
-          isFeatured: url.searchParams.get('isFeatured') === 'true' ? true : undefined,
-          status: url.searchParams.get('status') || undefined,
-        }
-        : undefined,
+      filters:{ 
+        labels: url.searchParams.get('label') ? [{ name: url.searchParams.get('label') }] : undefined,
+        isFeatured: url.searchParams.get('isFeatured') === 'true' ? true : undefined,
+        status: url.searchParams.get('status') || undefined,
+      }
     };
 
     const result = await queryHandler.filterMulti(options, ['author', 'labels'], user?.role);
