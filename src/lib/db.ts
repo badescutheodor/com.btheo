@@ -10,7 +10,7 @@ const options: DataSourceOptions = {
   database: path.join(process.cwd(), 'db.sqlite'),
   entities: Object.values(Entities),
   synchronize: isDevelopment,
-  logging: isDevelopment,
+  logging: false,
 };
 
 class DatabaseConnectionManager {
