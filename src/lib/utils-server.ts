@@ -104,13 +104,30 @@ export class QueryHandler<T extends ObjectLiteral> {
   async filterMulti(options: QueryOptions<T>, relations: string[] = [], role?: string) {
     role = role || 'public';
     const result = await this.executeFilterMulti(options, relations, role);
-    return this.applyFieldRenames(result, role);
+    return this.applyFieldRenames(this.applyFieldSelection(result, options.fields, role), role);
   }
 
   async filterOne(options: QueryOptions<T>, relations: string[] = [], role?: string): Promise<T | null> {
     role = role || 'public';
     const result = await this.executeFilterOne(options, relations, role);
-    return result ? this.applyFieldRenames({ data: [result] }, role).data[0] : null;
+    if (!result) return null;
+    
+    const processedResult = this.applyFieldRenames({ data: [result] }, role);
+    const selectedResult = this.applyFieldSelection(processedResult, options.fields, role);
+    return selectedResult.data[0] || null;
+  }
+
+  private async executeFilterOne(options: QueryOptions<T>, relations: string[] = [], role?: string): Promise<T | null> {
+    const where = this.buildWhereClause(options);
+    const order = this.buildOrderClause(options.sort, role);
+    const select = this.buildSelectClause(role);
+
+    return await this.repository.findOne({
+      where,
+      relations: this.parseRelations(relations),
+      order,
+      select,
+    });
   }
 
   private async executeFilterMulti(options: QueryOptions<T>, relations: string[] = [], role?: string) {
@@ -136,19 +153,6 @@ export class QueryHandler<T extends ObjectLiteral> {
         itemsPerPage: options.limit || 10,
       },
     };
-  }
-
-  private async executeFilterOne(options: QueryOptions<T>, relations: string[] = [], role?: string): Promise<T | null> {
-    const where = this.buildWhereClause(options);
-    const order = this.buildOrderClause(options.sort, role);
-    const select = this.buildSelectClause(role);
-
-    return await this.repository.findOne({
-      where,
-      relations: this.parseRelations(relations),
-      order,
-      select,
-    });
   }
 
   private parseRelations(relations: string[]): FindOptionsRelations<T> {
@@ -266,7 +270,30 @@ export class QueryHandler<T extends ObjectLiteral> {
       return condition;
     }
   }
-  
+
+  private applyFieldSelection(result: { data: T[], meta?: any }, fields?: string[], role?: string): { data: any[], meta?: any } {
+    if (!fields || fields.length === 0) return result;
+
+    const allowedFields = new Set(this.roleFields[role || 'public']);
+    const selectedFields = fields.filter(field => allowedFields.has(field));
+
+    const filteredData = result.data.map(item => {
+      const filteredItem: any = {};
+      selectedFields.forEach(field => {
+        if (field.includes('.')) {
+          const [parent, child] = field.split('.');
+          if (!filteredItem[parent]) filteredItem[parent] = {};
+          filteredItem[parent][child] = item[parent]?.[child];
+        } else {
+          filteredItem[field] = item[field];
+        }
+      });
+      return filteredItem;
+    });
+
+    return { ...result, data: filteredData };
+  }
+
   private getActualField(field: string, role?: string): string {
     // Check if the field is an alias
     if (this.fieldAliases[field]) {
@@ -412,6 +439,7 @@ interface QueryOptions<T> {
   limit?: number;
   search?: string;
   searchFields?: (keyof T)[];
+  fields?: string[];
 }
 
 interface SortOption<T> {

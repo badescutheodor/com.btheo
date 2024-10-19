@@ -30,12 +30,13 @@ export async function GET(req: NextRequest) {
       limit: parseInt(url.searchParams.get('limit') || '10', 10),
       sort: url.searchParams.get('sort') || undefined,
       search: url.searchParams.get('search') || undefined,
-      searchFields: ['author', 'content'],
+      searchFields: ['title', 'author', 'content', 'labels.name'],
       filters:{ 
         labels: url.searchParams.get('label') ? [{ name: url.searchParams.get('label') }] : undefined,
         isFeatured: url.searchParams.get('isFeatured') === 'true' ? true : undefined,
         status: url.searchParams.get('status') || undefined,
-      }
+      },
+      fields: url.searchParams.get('fields')?.split(',') || undefined,
     };
 
     const result = await queryHandler.filterMulti(options, ['author', 'labels'], user?.role);

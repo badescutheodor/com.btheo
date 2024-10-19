@@ -32,9 +32,8 @@ export async function getFeaturedPosts(limit: number) {
     title: post.title,
     slug: post.slug,
     content: post.content,
-    author: {
-      name: post.author.name,
-    },
+    author: post.author.name,
+    avatar: post.author.avatar?.filename,
     previewImage: extractFirstImage(post.content),
   }));
 }
@@ -57,9 +56,7 @@ export async function getRelatedPosts(postId: number, labelIds: number[], limit:
     id: post.id,
     title: post.title,
     slug: post.slug,
-    author: {
-      name: post.author.name,
-    },
+    author: post.author.name,
     labels: post.labels.map(label => label ? {...label} : {}),
     previewImage: extractFirstImage(post.content),
   }));
@@ -73,17 +70,26 @@ export async function getBlogPosts({
   const db = await getDB();
   const blogPostRepository = db.getRepository(BlogPost);
   const queryHandler = new QueryHandler(blogPostRepository);
-  queryHandler.setRoleFields('public', ['id', 'content', 'excerpt', 'author.avatar.filename', 'labels.name', 'labels.slug', 'metaTags']);
+  queryHandler.setRoleFields('public', ['id', 'slug', 'excerpt', 'content', 'author.avatar.filename:avatar', 'author.name:author', 'labels.name', 'labels.slug']);
   const posts = await queryHandler.filterMulti({
     page,
+    filters: {
+      ...(label ? { labels: [{ slug: label }] } : {}),
+    },
+    search,
     limit: 10,
   }, ['author.avatar', 'labels'], 'public');
 
   return {
-    data: posts.data.map(post => ({
-      ...post,
-      imagePreview: extractFirstImage(post.content),
-    })),
+    data: posts.data.map(post => {
+      const newPost = {
+        ...post,
+        imagePreview: extractFirstImage(post.content)
+      }
+    
+      delete newPost.content;
+      return newPost;
+    }),
     meta: posts.meta,
   }
 }

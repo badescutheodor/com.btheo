@@ -389,6 +389,13 @@ const BlogPostsPage: React.FC = () => {
         setBlogPosts(append ? [...blogPosts, ...posts.data] : posts.data);
         setBlogMeta(posts.meta);
         setParams(setParameters);
+
+        for (const key in setParameters) {
+          if (setParameters[key] === "") {
+            delete setParameters[key];
+          }
+        }
+
         const newQuery = qs.stringify(setParameters, {
           encode: false,
           addQueryPrefix: true,

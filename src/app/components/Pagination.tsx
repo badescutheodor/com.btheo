@@ -53,7 +53,7 @@ const Pagination: React.FC<PaginationProps> = ({
 
   const pageNumbers = renderPageNumbers();
 
-  if (totalPages === 1) {
+  if (totalPages === 1 || pageNumbers.length === 0) {
     return null;
   }
 

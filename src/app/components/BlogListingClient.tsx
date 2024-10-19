@@ -133,7 +133,7 @@ export default function BlogListingClient({
       <div>
         <Pagination
           itemsPerPage={meta.perPage}
-          page={page}
+          page={meta.currentPage}
           onPageChange={onPageChange}
           totalPages={meta.totalPages}
         />
