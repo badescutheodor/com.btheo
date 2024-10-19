@@ -1,16 +1,20 @@
 import React, { useState, useEffect } from "react";
 import styles from "@/app/styles/Table.module.css";
-import { FiX, FiMoreHorizontal } from "react-icons/fi";
+import {
+  FiX,
+  FiMoreHorizontal,
+  FiChevronUp,
+  FiChevronDown,
+} from "react-icons/fi";
 import cx from "classnames";
 import Pagination from "./Pagination";
-import Button from "./Button";
 import Dropdown from "./Dropdown";
 
 type Field = {
   name: string;
   key: string;
   label: string;
-  transform?: (value: any) => any;
+  transform?: (value: any, item: any) => any;
   sortable: boolean;
   style?: React.CSSProperties;
 };
@@ -21,7 +25,12 @@ interface TableProps {
   filters: any;
   meta: any;
   data: any;
+  sorts: any;
   actions: any[];
+  onPageChange: (page: number) => void;
+  onSort: (field: string, order: string) => void;
+  onSearch: (search: string) => void;
+  params: any;
 }
 
 const Table: React.FC<TableProps> = ({
@@ -30,7 +39,29 @@ const Table: React.FC<TableProps> = ({
   fields,
   meta,
   actions,
+  onPageChange,
+  onSort,
+  onSearch,
+  params,
 }) => {
+  const convertSorts = (sorts: string) => {
+    if (!sorts) {
+      return {};
+    }
+
+    return sorts.split(",").reduce((acc, sort) => {
+      const [field, order] = sort.split(":");
+      acc[field] = order;
+      return acc;
+    }, {});
+  };
+
+  const [sorts, setSorts] = useState<any>(convertSorts(params.sorts));
+
+  useEffect(() => {
+    setSorts(convertSorts(params.sort));
+  }, [params.sort]);
+
   return (
     <div className={cx(className, styles.table)}>
       {data.length === 0 && <p>No data available to be displayed</p>}
@@ -42,9 +73,26 @@ const Table: React.FC<TableProps> = ({
                 {fields.map((field) => (
                   <th
                     key={field.key}
+                    className={cx({ [styles.sortable]: field.sortable })}
                     {...(field.style ? { style: field.style } : {})}
+                    {...(field.sortable
+                      ? {
+                          onClick: () => {
+                            onSort(
+                              field.key,
+                              sorts[field.key] === "ASC" ? "DESC" : "ASC"
+                            );
+                          },
+                        }
+                      : {})}
                   >
-                    {field.label}
+                    {field.label}{" "}
+                    {field.sortable &&
+                      (sorts[field.key] === "ASC" ? (
+                        <FiChevronUp />
+                      ) : (
+                        <FiChevronDown />
+                      ))}
                   </th>
                 ))}
                 <th></th>
@@ -56,7 +104,7 @@ const Table: React.FC<TableProps> = ({
                   {fields.map((field) => (
                     <td key={field.key}>
                       {field.transform && typeof field.transform === "function"
-                        ? field.transform(item[field.key])
+                        ? field.transform(item[field.key], item)
                         : item[field.key]}
                     </td>
                   ))}
@@ -85,8 +133,8 @@ const Table: React.FC<TableProps> = ({
           <Pagination
             totalItems={meta.totalItems}
             itemsPerPage={meta.itemsPerPage}
-            page={meta.page}
-            onPageChange={(page) => console.log(page)}
+            page={meta.currentPage}
+            onPageChange={(page) => onPageChange(page)}
           />
         </>
       )}

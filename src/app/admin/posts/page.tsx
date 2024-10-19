@@ -16,6 +16,7 @@ import * as yup from "yup";
 import moment from "moment";
 import Switch from "@/app/components/Switch";
 import Label from "@/app/components/Label";
+import qs from "qs";
 
 const MdEditor = dynamic(() => import("react-markdown-editor-lite"), {
   ssr: false,
@@ -70,6 +71,7 @@ const BlogPostsPage: React.FC = () => {
     metaTags: {},
   });
   const [error, setError] = useState<string | null>(null);
+  const [params, setParams] = useState({});
 
   const mdParser = new MarkdownIt({
     highlight: function (str, lang) {
@@ -91,17 +93,30 @@ const BlogPostsPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    fetchBlogPosts();
+    const params = qs.parse(window.location.search);
+    fetchBlogPosts(params);
     fetchLabels();
   }, []);
 
-  const fetchBlogPosts = async () => {
+  const fetchBlogPosts = async (newParams = {}) => {
+    const setParameters = { ...params, ...newParams };
     try {
-      const response = await fetch("/api/posts");
+      const response = await fetch(
+        "/api/posts?" + qs.stringify(setParameters, { encode: false })
+      );
       if (response.ok) {
         const posts = await response.json();
         setBlogPosts(posts.data);
         setBlogMeta(posts.meta);
+        setParams(setParameters);
+        console.log(setParameters);
+        window.history.replaceState(
+          {},
+          "",
+          window.location.pathname +
+            "?" +
+            qs.stringify(setParameters, { encode: false })
+        );
       } else {
         throw new Error("Failed to fetch blog posts");
       }
@@ -135,7 +150,7 @@ const BlogPostsPage: React.FC = () => {
     try {
       const readTime = calculateReadTime(values.content);
       const response = await fetch("/api/posts", {
-        method: blogPost.id ? "PUT" : "POST",
+        method: blogPost.id || values.id ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...blogPost,
@@ -144,7 +159,7 @@ const BlogPostsPage: React.FC = () => {
           content: values.content || "",
           excerpt:
             values.excerpt || (values.content || "").slice(0, 200) + "...",
-          status: values.status ? "published" : "draft",
+          status: values.status || "draft",
           date: values.date || new Date().toISOString().split("T")[0],
           labels:
             values.labels?.map((label: any) => ({ id: label.value })) || [],
@@ -158,7 +173,7 @@ const BlogPostsPage: React.FC = () => {
       });
 
       if (response.ok) {
-        await fetchBlogPosts();
+        await fetchBlogPosts(params);
         setBlogPost({
           title: "",
           content: "",
@@ -182,7 +197,7 @@ const BlogPostsPage: React.FC = () => {
     }
   };
 
-  const setBlogPostForEdit = (post: any) => {
+  const processPost = (post: any) => {
     const newPost = {
       ...post,
     };
@@ -193,13 +208,19 @@ const BlogPostsPage: React.FC = () => {
     }));
 
     if (newPost.metaTags?.keywords) {
-      post.metaTags.keywords = post.metaTags.keywords.map((keyword: any) => ({
-        value: keyword,
-        label: keyword,
-      }));
+      newPost.metaTags.keywords = post.metaTags.keywords.map(
+        (keyword: any) => ({
+          value: keyword,
+          label: keyword,
+        })
+      );
     }
 
-    setBlogPost(newPost);
+    return newPost;
+  };
+
+  const setBlogPostForEdit = (post: any) => {
+    setBlogPost(processPost(post));
   };
 
   const handleDeleteBlogPost = async (post: any) => {
@@ -232,8 +253,8 @@ const BlogPostsPage: React.FC = () => {
     }
   };
 
-  const handleEditorChange = ({ text }: { text: string }) => {
-    setBlogPost({ ...blogPost, content: text });
+  const updatePost = (post = {}) => {
+    handleBlogPost(processPost(post));
   };
 
   return (
@@ -401,6 +422,11 @@ const BlogPostsPage: React.FC = () => {
         </div>
       </div>
       <Table
+        onSort={(field, order) =>
+          fetchBlogPosts({ ...params, sort: `${field}:${order}` })
+        }
+        params={params}
+        onPageChange={(page) => fetchBlogPosts({ page })}
         fields={[
           {
             name: "id",
@@ -444,14 +470,29 @@ const BlogPostsPage: React.FC = () => {
             name: "Is Featured",
             key: "isFeatured",
             label: "Is Featured",
-            transform: (value) => <Switch checked={value} />,
+            transform: (value, post) => (
+              <Switch
+                checked={value}
+                onChange={() => updatePost({ ...post, isFeatured: !value })}
+              />
+            ),
             sortable: true,
           },
           {
             name: "Published",
             key: "status",
             label: "Published",
-            transform: (value) => <Switch checked={value === "published"} />,
+            transform: (value, post) => (
+              <Switch
+                checked={value === "published"}
+                onChange={() =>
+                  updatePost({
+                    ...post,
+                    status: value === "published" ? "draft" : "published",
+                  })
+                }
+              />
+            ),
             sortable: true,
           },
         ]}

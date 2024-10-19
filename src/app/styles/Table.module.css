@@ -45,3 +45,14 @@
 .table table {
   border-collapse: collapse;
 }
+
+.table .sortable {
+  vertical-align: middle;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.table .sortable svg {
+  position: relative;
+  top: 3px;
+}
