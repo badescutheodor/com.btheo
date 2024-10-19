@@ -1,10 +1,12 @@
 .table {
   margin-top: var(--spacing-lg);
   width: 100%;
+  overflow-x: auto;
 }
 
 .table table {
   width: 100%;
+  border-collapse: collapse;
 }
 
 .table th {
@@ -42,10 +44,6 @@
   padding: 4px 10px;
 }
 
-.table table {
-  border-collapse: collapse;
-}
-
 .table .sortable {
   vertical-align: middle;
   cursor: pointer;
@@ -55,4 +53,64 @@
 .table .sortable svg {
   position: relative;
   top: 3px;
+}
+
+.loadMoreTrigger {
+  text-align: center;
+  padding: 20px;
+}
+
+@media (max-width: 767px) {
+  .table.mobile {
+    overflow-x: visible;
+  }
+
+  .table.mobile table,
+  .table.mobile thead,
+  .table.mobile tbody,
+  .table.mobile th,
+  .table.mobile td,
+  .table.mobile tr {
+    display: block;
+  }
+
+  .table.mobile thead tr {
+    position: absolute;
+    top: -9999px;
+    left: -9999px;
+  }
+
+  .table.mobile tr {
+    border: 1px solid var(--gray-100);
+    margin-bottom: 10px;
+    padding-bottom: 20px;
+  }
+
+  .table.mobile td {
+    border: none;
+    position: relative;
+    top: 20px;
+    padding-left: 50%;
+    min-height: 30px; /* Adjust as needed */
+  }
+
+  .table.mobile td:before {
+    content: attr(data-label);
+    position: absolute;
+    left: 20px;
+    width: 45%;
+    padding-right: 10px;
+    white-space: nowrap;
+    font-weight: bold;
+    font-size: var(--small-size);
+  }
+
+  .table.mobile tbody tr:nth-child(even) {
+    background: transparent;
+  }
+
+  .table.mobile .actionDropdown ul {
+    margin-left: 0;
+    right: 0;
+  }
 }

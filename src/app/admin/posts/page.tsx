@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, use } from "react";
 import { useUser } from "@/app/contexts/UserContext";
 import dynamic from "next/dynamic";
 import MarkdownIt from "markdown-it";
@@ -25,6 +25,7 @@ const MdEditor = dynamic(() => import("react-markdown-editor-lite"), {
 
 import "react-markdown-editor-lite/lib/index.css";
 import Table from "@/app/components/Table";
+import { set } from "react-datepicker/dist/date_utils";
 
 // Types
 interface Label {
@@ -212,6 +213,7 @@ const BlogPostTable: React.FC<{
   onEdit: (post: BlogPost) => void;
   onDelete: (post: BlogPost) => void;
   onUpdatePost: (post: BlogPost) => void;
+  loadMoreData?: () => void;
 }> = ({
   blogPosts,
   blogMeta,
@@ -221,11 +223,13 @@ const BlogPostTable: React.FC<{
   onEdit,
   onDelete,
   onUpdatePost,
+  loadMoreData,
 }) => {
   return (
     <Table
       onSort={(field, order) => onSort(field, order)}
       params={params}
+      onLoadMore={loadMoreData}
       onPageChange={(page) => onPageChange(page)}
       fields={[
         {
@@ -347,13 +351,17 @@ const BlogPostsPage: React.FC = () => {
   const [params, setParams] = useState({});
 
   useEffect(() => {
-    const params = qs.parse(window.location.search);
+    const params = qs.parse(window.location.search.slice(1));
     fetchBlogPosts(params);
+    if (params.search) {
+      setSearch(params.search);
+    }
     fetchLabels();
   }, []);
 
-  const fetchBlogPosts = async (newParams = {}) => {
+  const fetchBlogPosts = async (newParams = {}, append?: boolean) => {
     const setParameters = { ...params, ...newParams };
+
     try {
       const response = await fetch(
         "/api/posts?" +
@@ -364,10 +372,21 @@ const BlogPostsPage: React.FC = () => {
       );
       if (response.ok) {
         const posts = await response.json();
-        setBlogPosts(posts.data);
+        setBlogPosts(append ? [...blogPosts, ...posts.data] : posts.data);
         setBlogMeta(posts.meta);
         setParams(setParameters);
-        //window.location.search = qs.stringify(setParameters, { encode: false });
+        const newQuery = qs.stringify(setParameters, {
+          encode: false,
+          addQueryPrefix: true,
+        });
+
+        window.history.pushState(
+          {},
+          "",
+          Object.keys(setParameters).length > 0
+            ? newQuery
+            : window.location.pathname
+        );
       } else {
         throw new Error("Failed to fetch blog posts");
       }
@@ -500,6 +519,10 @@ const BlogPostsPage: React.FC = () => {
     []
   );
 
+  const loadMoreData = useCallback(() => {
+    debounce(fetchBlogPosts({ page: blogMeta.page + 1 }, true), 500);
+  });
+
   return (
     <div>
       <Modal
@@ -520,21 +543,22 @@ const BlogPostsPage: React.FC = () => {
         <div className="col-lg-2">
           <h3 className="m-0">Posts</h3>
         </div>
-        <div className="col-lg-4 col-xs-12">
+        <div className="col-lg-4 col-sm-12 col-xs-12 md-mb-md">
           <Input
             iconLeft={<FiSearch />}
             name={"search"}
             placeholder={"Search posts..."}
-            onChange={(value) => {
+            onChange={(value: any) => {
               setSearch(value);
               handleSearch(value);
             }}
             value={search}
           />
         </div>
-        <div className="col-6 text-right">
+        <div className="col-lg-6 col-xs-12 text-right">
           <div>
             <Button
+              className="full-width-sm"
               onClick={() => {
                 setShowModal(true);
                 setBlogPost({});
@@ -549,6 +573,7 @@ const BlogPostsPage: React.FC = () => {
         blogPosts={blogPosts}
         blogMeta={blogMeta}
         params={params}
+        loadMoreData={loadMoreData}
         onSort={(field, order) =>
           fetchBlogPosts({ ...params, sort: `${field}:${order}` })
         }

@@ -1335,3 +1335,9 @@ a:focus {
     margin-top: var(--spacing-md) !important;
   }
 }
+
+@media (max-width: 996px) {
+  .md-mb-md {
+    margin-top: var(--spacing-md) !important;
+  }
+}

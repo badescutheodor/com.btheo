@@ -60,7 +60,7 @@ type InputType =
   | "react-select-creatable";
 
 interface InputProps {
-  type: InputType;
+  type?: InputType;
   name: string;
   label?: string;
   placeholder?: string;
@@ -89,7 +89,7 @@ interface InputProps {
 
 const Input: React.FC<InputProps> = React.memo(
   ({
-    type,
+    type = "text",
     name,
     label,
     placeholder,

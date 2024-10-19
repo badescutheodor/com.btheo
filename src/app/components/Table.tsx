@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import styles from "@/app/styles/Table.module.css";
 import {
   FiX,
@@ -19,6 +19,18 @@ type Field = {
   style?: React.CSSProperties;
 };
 
+const convertSorts = (sorts: string) => {
+  if (!sorts) {
+    return {};
+  }
+
+  return sorts.split(",").reduce((acc, sort) => {
+    const [field, order] = sort.split(":");
+    acc[field] = order;
+    return acc;
+  }, {});
+};
+
 interface TableProps {
   className?: string;
   fields: Field[];
@@ -31,6 +43,7 @@ interface TableProps {
   onSort: (field: string, order: string) => void;
   onSearch: (search: string) => void;
   params: any;
+  onLoadMore: () => void;
 }
 
 const Table: React.FC<TableProps> = ({
@@ -43,27 +56,53 @@ const Table: React.FC<TableProps> = ({
   onSort,
   onSearch,
   params,
+  onLoadMore,
 }) => {
-  const convertSorts = (sorts: string) => {
-    if (!sorts) {
-      return {};
-    }
-
-    return sorts.split(",").reduce((acc, sort) => {
-      const [field, order] = sort.split(":");
-      acc[field] = order;
-      return acc;
-    }, {});
-  };
-
   const [sorts, setSorts] = useState<any>(convertSorts(params.sorts));
+  const [isMobile, setIsMobile] = useState<boolean>(false);
+  const observerTarget = useRef(null);
 
   useEffect(() => {
     setSorts(convertSorts(params.sort));
   }, [params.sort]);
 
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
+  const infiniteScrollObserver = useCallback(
+    (node) => {
+      if (isMobile) {
+        const observer = new IntersectionObserver(
+          (entries) => {
+            if (entries[0].isIntersecting) {
+              onLoadMore();
+            }
+          },
+          { threshold: 1.0 }
+        );
+
+        if (node) {
+          observer.observe(node);
+        }
+
+        return () => {
+          if (node) {
+            observer.unobserve(node);
+          }
+        };
+      }
+    },
+    [isMobile, onLoadMore]
+  );
+
   return (
-    <div className={cx(className, styles.table)}>
+    <div className={cx(className, styles.table, { [styles.mobile]: isMobile })}>
       {data.length === 0 && <p>No data available to be displayed</p>}
       {data.length > 0 && (
         <>
@@ -102,23 +141,21 @@ const Table: React.FC<TableProps> = ({
               {data.map((item: any, key: number) => (
                 <tr key={`${item.id}-${key}`}>
                   {fields.map((field) => (
-                    <td key={field.key}>
+                    <td key={field.key} data-label={field.label}>
                       {field.transform && typeof field.transform === "function"
                         ? field.transform(item[field.key], item)
                         : item[field.key]}
                     </td>
                   ))}
-                  {actions.length && (
+                  {actions.length > 0 && (
                     <td>
                       <Dropdown
                         className={styles.actionDropdown}
-                        options={actions.map((action) => {
-                          return {
-                            labelClassName: action.labelClassName,
-                            label: action.label,
-                            onClick: () => action.onClick(item),
-                          };
-                        })}
+                        options={actions.map((action) => ({
+                          labelClassName: action.labelClassName,
+                          label: action.label,
+                          onClick: () => action.onClick(item),
+                        }))}
                         withCaret={false}
                         onSelect={() => {}}
                       >
@@ -130,12 +167,22 @@ const Table: React.FC<TableProps> = ({
               ))}
             </tbody>
           </table>
-          <Pagination
-            totalItems={meta.totalItems}
-            itemsPerPage={meta.itemsPerPage}
-            page={meta.currentPage}
-            onPageChange={(page) => onPageChange(page)}
-          />
+          {!isMobile && (
+            <Pagination
+              totalItems={meta.totalItems}
+              itemsPerPage={meta.itemsPerPage}
+              page={meta.currentPage}
+              onPageChange={(page) => onPageChange(page)}
+            />
+          )}
+          {isMobile && (
+            <div
+              ref={infiniteScrollObserver}
+              className={styles.loadMoreTrigger}
+            >
+              {meta.currentPage < meta.totalPages && <p>Loading more...</p>}
+            </div>
+          )}
         </>
       )}
     </div>
