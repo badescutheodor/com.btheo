@@ -18,23 +18,9 @@ export class Setting {
   @IsString()
   value: string;
 
-  @CreateDateColumn()
-  @IsDate()
+  @CreateDateColumn({ type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })
   createdAt: Date;
 
-  @UpdateDateColumn()
-  @IsDate()
+  @UpdateDateColumn({ type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })
   updatedAt: Date;
-
-  static async validate(entryData: Partial<Setting>): Promise<{ [key: string]: string[] }> {
-    const entry = plainToClass(Setting, entryData);
-    const errors = await validate(entry);
-    
-    return errors.reduce((acc, error: ValidationError) => {
-      if (error.property && error.constraints) {
-        acc[error.property] = Object.values(error.constraints);
-      }
-      return acc;
-    }, {} as { [key: string]: string[] });
-} 
 }

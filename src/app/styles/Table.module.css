@@ -60,13 +60,17 @@
   padding: 20px;
 }
 
-.editable:hover > div {
-  border: 2px solid var(--bg-lightest);
+.editable > div:not(.input) {
+  display: inline-block;
   background: var(--bg-lightest);
   padding: 5px 10px;
-  display: inline;
-  margin-left: -10px;
-  margin-right: -10px;
+}
+
+.editable > div:not(.input):hover {
+  border: 1px solid var(--input-border);
+  background: var(--bg-lightest);
+  padding: 5px 10px;
+  display: inline-block;
   cursor: pointer;
   user-select: none;
 }

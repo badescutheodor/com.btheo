@@ -551,7 +551,11 @@ const BlogPostsPage: React.FC = () => {
   );
 
   const loadMoreData = useCallback(() => {
-    debounce(fetchBlogPosts({ page: blogMeta.page + 1 }, true), 500);
+    if (blogMeta.currentPage >= blogMeta.totalPages) {
+      return;
+    }
+
+    debounce(fetchBlogPosts({ page: blogMeta.currentPage + 1 }, true), 500);
   });
 
   return (

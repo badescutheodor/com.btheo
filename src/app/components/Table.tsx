@@ -108,7 +108,7 @@ const Table: React.FC<TableProps> = ({
   );
 
   const toggleEdit = (item: any, field: Field) => {
-    if (!field.editable) {
+    if (!field.editable && item.id !== "new") {
       return;
     }
 
@@ -124,7 +124,7 @@ const Table: React.FC<TableProps> = ({
   };
 
   const saveEdit = (item: any, field: Field, value: any) => {
-    if (!field.editable || field.type === "date") {
+    if ((!field.editable || field.type === "date") && item.id !== "new") {
       return;
     }
 
@@ -141,7 +141,7 @@ const Table: React.FC<TableProps> = ({
 
   const onEditChange = (item: any, field: Field, value: any) => {
     const newData = currentData.map((dataItem) => {
-      if (dataItem.id === item.id) {
+      if (dataItem.id === item.id && value !== "") {
         return {
           ...dataItem,
           [field.key]: value,
@@ -210,27 +210,32 @@ const Table: React.FC<TableProps> = ({
                       {...(field.style ? { style: field.style } : {})}
                       className={cx({
                         [styles.editable]:
-                          field.editable &&
+                          (field.editable ||
+                            (item.id === "new" && field.key !== "id")) &&
                           !(
                             editingCell &&
                             editingCell.itemId === item.id &&
                             editingCell.fieldKey === field.key
                           ),
                       })}
-                      onClick={() => !editingCell && toggleEdit(item, field)}
                     >
                       {!(
                         editingCell &&
                         editingCell.itemId === item.id &&
                         editingCell.fieldKey === field.key
-                      ) && (
-                        <div>
-                          {field.transform &&
-                          typeof field.transform === "function"
-                            ? field.transform(item[field.key], item)
-                            : item[field.key]}
-                        </div>
-                      )}
+                      ) &&
+                        (item.id === "new" ? field.key === "id" : true) && (
+                          <div
+                            onClick={() =>
+                              !editingCell && toggleEdit(item, field)
+                            }
+                          >
+                            {field.transform &&
+                            typeof field.transform === "function"
+                              ? field.transform(item[field.key], item)
+                              : item[field.key]}
+                          </div>
+                        )}
                       {editingCell &&
                         editingCell.itemId === item.id &&
                         editingCell.fieldKey === field.key && (
@@ -238,8 +243,13 @@ const Table: React.FC<TableProps> = ({
                             value={item[field.key]}
                             name={field.key}
                             style={{ marginBottom: 0 }}
+                            className={styles.input}
                             autoFocus
-                            type={field.type || "text"}
+                            type={
+                              (typeof field.type === "function"
+                                ? field.type(item)
+                                : field.type) || "text"
+                            }
                             onBlur={() => {
                               saveEdit(item, field, item[field.key]);
                             }}
@@ -248,6 +258,25 @@ const Table: React.FC<TableProps> = ({
                             }}
                           />
                         )}
+                      {item.id === "new" && field.key !== "id" && (
+                        <Input
+                          value={item[field.key]}
+                          name={field.key}
+                          className={styles.input}
+                          style={{ marginBottom: 0 }}
+                          type={
+                            (typeof field.type === "function"
+                              ? field.type(item)
+                              : field.type) || "text"
+                          }
+                          onBlur={() => {
+                            saveEdit(item, field, item[field.key]);
+                          }}
+                          onChange={(value) => {
+                            onEditChange(item, field, value);
+                          }}
+                        />
+                      )}
                     </td>
                   ))}
                   {actions.length > 0 && (

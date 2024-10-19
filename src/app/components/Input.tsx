@@ -21,6 +21,8 @@ import { useForm } from "./FormProvider";
 import styles from "@/app/styles/Input.module.css";
 import Select from "react-select";
 import CreatableSelect from "react-select/creatable";
+import useOutsideClick from "@/hooks/useOutsideClick";
+import cx from "classnames";
 
 const Switch = lazy(() => import("./Switch"));
 const Checkbox = lazy(() => import("./Checkbox"));
@@ -140,6 +142,7 @@ const Input: React.FC<InputProps> = React.memo(
     const inputRef = useRef<
       HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
     >(null);
+
     const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
     const isControlled = propValue !== undefined && propOnChange !== undefined;
@@ -244,10 +247,14 @@ const Input: React.FC<InputProps> = React.memo(
       accept: accept ? { [accept]: [] } : undefined,
     });
 
+    const fileInputRef = useOutsideClick((event) => {
+      handleBlur(event);
+    });
+
     const renderFileUpload = () => {
       const files = Array.isArray(value) ? value : [];
       return (
-        <div className={styles.fileUpload}>
+        <div className={styles.fileUpload} ref={fileInputRef}>
           <div
             {...getRootProps()}
             className={`${styles.dropzone} ${
@@ -306,14 +313,16 @@ const Input: React.FC<InputProps> = React.memo(
           iconLeft ? styles.hasIconLeft : ""
         } ${iconRight ? styles.hasIconRight : ""} ${
           addonLeft ? styles.hasAddonLeft : ""
-        } ${addonRight ? styles.hasAddonRight : ""} ${className || ""}`,
+        } ${addonRight ? styles.hasAddonRight : ""} ${
+          className ? className + "-input" : ""
+        }`,
         autoFocus,
       };
 
       switch (type) {
         case "select":
           return (
-            <div className={styles.selectWrapper}>
+            <div className={cx(styles.selectWrapper, className)}>
               <select
                 {...commonProps}
                 ref={inputRef as React.RefObject<HTMLSelectElement>}
@@ -455,7 +464,7 @@ const Input: React.FC<InputProps> = React.memo(
 
     return (
       <div
-        className={`${styles.inputWrapper} ${
+        className={`${styles.inputWrapper} ${className || ""} ${
           floatingLabel && (isFocused || value) ? styles.floatingLabel : ""
         }`}
         {...(style ? { style } : {})}
