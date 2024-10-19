@@ -46,6 +46,7 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   transition: max-height 0.3s ease, opacity 0.3s ease;
   border-radius: 4px;
+  font-size: var(--smaller-size);
 }
 
 .dropdownMenu.open {
@@ -55,7 +56,7 @@
 }
 
 .dropdownItem {
-  padding: var(--spacing-sm) var(--spacing-md);
+  padding: var(--spacing-xs) var(--spacing-xs);
   cursor: pointer;
   color: var(--text-darker) !important;
 }

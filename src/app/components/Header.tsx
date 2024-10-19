@@ -82,6 +82,7 @@ const Header = ({ settings }: Settings) => {
         <div className={styles.right}>
           {user && (
             <Dropdown
+              withHover
               className={styles.userDropdown}
               options={[
                 { label: "Admin", href: "/admin" },

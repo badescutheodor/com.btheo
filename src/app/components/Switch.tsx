@@ -3,7 +3,7 @@ import styles from "@/app/styles/Switch.module.css";
 import { useForm } from "./FormProvider";
 
 interface SwitchProps {
-  name: string;
+  name?: string;
   label?: string;
   disabled?: boolean;
   checked?: boolean;

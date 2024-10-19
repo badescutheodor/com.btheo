@@ -69,86 +69,23 @@ export async function refetchSettings() {
   revalidatePath('/'); // Revalidate all pages that use this data
 }
 
-type ObjectLiteral = Record<string, any>;
-
-type DeepPartial<T> = T extends ObjectLiteral ? {
-  [P in keyof T]?: T[P] extends Array<infer U>
-    ? Array<DeepPartial<U>>
-    : T[P] extends ObjectLiteral
-    ? DeepPartial<T[P]>
-    : T[P];
-} : T;
-
-type SortOption<T> = {
-  field: keyof T;
-  order: 'ASC' | 'DESC';
-};
-
-type Primitive = string | number | boolean | null | undefined;
-
-type SafeDotNotation<T, Depth extends number[] = []> = T extends Primitive
-  ? never
-  : T extends Array<infer U>
-  ? `${number}` | `${number}.${SafeDotNotation<U, [...Depth, 0]>}`
-  : {
-      [K in keyof T]: K extends string
-        ? Depth['length'] extends 5
-          ? never
-          : T[K] extends Primitive
-          ? K
-          : `${K}` | `${K}.${SafeDotNotation<T[K], [...Depth, 0]>}`
-        : never;
-    }[keyof T];
-
-type TypeORMFilter<T> = {
-  [P in keyof T]?: T[P] extends Array<infer U>
-    ? TypeORMFilter<U>[]
-    : T[P] extends ObjectLiteral
-    ? TypeORMFilter<T[P]>
-    : T[P] | FindOperator<T[P]>;
-};
-
-interface FilterOperators {
-  $eq?: any;
-  $ne?: any;
-  $gt?: number | Date;
-  $gte?: number | Date;
-  $lt?: number | Date;
-  $lte?: number | Date;
-  $between?: [number, number] | [Date, Date];
-  $in?: any[];
-  $nin?: any[];
-  $like?: string;
-  $ilike?: string;
-  $null?: boolean;
-}
-
-export interface QueryOptions<T extends ObjectLiteral> {
-  page?: number;
-  limit?: number;
-  sort?: string;
-  search?: string;
-  searchFields?: (keyof T)[];
-  filters?: DeepPartial<T & { [key: string]: FilterOperators }>;
-}
-
 export class QueryHandler<T extends ObjectLiteral> {
   private roleFields: Record<string, SafeDotNotation<T>[]> = {};
   private fieldRenames: Record<string, Record<string, string>> = {};
-  private fieldAliases: Record<string, Record<string, string>> = {};
+  private reverseFieldRenames: Record<string, Record<string, string>> = {};
 
   constructor(private repository: Repository<T>) {}
 
   setRoleFields(role: string, fields: SafeDotNotation<T>[]) {
     this.roleFields[role] = fields;
     this.fieldRenames[role] = {};
-    this.fieldAliases[role] = {};
+    this.reverseFieldRenames[role] = {};
 
     fields.forEach(field => {
       const [path, rename] = (field as string).split(':');
       if (rename) {
         this.fieldRenames[role][path] = rename;
-        this.fieldAliases[role][rename] = path;
+        this.reverseFieldRenames[role][rename] = path;
         this.roleFields[role] = this.roleFields[role].filter(f => f !== field);
         this.roleFields[role].push(path as SafeDotNotation<T>);
       }
@@ -352,10 +289,10 @@ export class QueryHandler<T extends ObjectLiteral> {
     if ('$between' in operators) return Between(operators.$between[0], operators.$between[1]);
     if ('$in' in operators) return In(operators.$in);
     if ('$nin' in operators) return Not(In(operators.$nin));
-    if ('$like' in operators) return ILike(`%${operators.$like}%`);
+    if ('$like' in operators) return Like(`%${operators.$like}%`);
     if ('$ilike' in operators) return ILike(`%${operators.$ilike}%`);
     if ('$null' in operators) return operators.$null ? IsNull() : Not(IsNull());
-    return operators as any;
+    return operators;
   }
 
   private parseFilterValue(value: any): any {
@@ -368,22 +305,13 @@ export class QueryHandler<T extends ObjectLiteral> {
   private buildOrderClause(sortParam?: string, role?: string): FindOptionsOrder<T> | undefined {
     if (!sortParam) return undefined;
 
-    const sortOptions = this.parseSortParams(sortParam);
+    const sortOptions = this.parseSortParams(sortParam, role);
     if (!sortOptions || sortOptions.length === 0) return undefined;
 
     return sortOptions.reduce((orderBy, { field, order }) => {
-      const actualField = this.resolveFieldAlias(field, role);
-      this.setNestedProperty(orderBy, actualField, order);
+      this.setNestedProperty(orderBy, field, order);
       return orderBy;
     }, {} as FindOptionsOrder<T>);
-  }
-
-  private resolveFieldAlias(field: string, role?: string): string {
-    if (role && this.fieldAliases[role]) {
-      const actualField = this.fieldAliases[role][field];
-      return actualField || field;
-    }
-    return field;
   }
 
   private setNestedProperty(obj: any, path: string, value: any): void {
@@ -398,11 +326,17 @@ export class QueryHandler<T extends ObjectLiteral> {
     current[parts[parts.length - 1]] = value;
   }
 
-  private parseSortParams(sortParam: string): SortOption<T>[] {
+  private parseSortParams(sortParam: string, role?: string): SortOption<T>[] {
     return sortParam.split(',').map(part => {
-      const [field, order] = part.split(':');
+      let [field, order] = part.split(':');
+      
+      // Check if the field is an alias and convert it to the actual field name
+      if (role && this.reverseFieldRenames[role] && this.reverseFieldRenames[role][field]) {
+        field = this.reverseFieldRenames[role][field];
+      }
+
       return {
-        field: field.trim(),
+        field: field as any, // Using 'any' here to allow dot notation
         order: (order?.toUpperCase() as 'ASC' | 'DESC') || 'ASC'
       };
     }).filter(this.isValidSortOption);
@@ -439,6 +373,48 @@ export class QueryHandler<T extends ObjectLiteral> {
     return select;
   }
 }
+
+// Type definitions
+type SafeDotNotation<T> = {
+  [K in keyof T]: T[K] extends object ? `${K & string}.${SafeDotNotation<T[K]>}` : K
+}[keyof T] | (string & {});
+
+interface QueryOptions<T> {
+  filters?: DeepPartial<T & { [key: string]: FilterOperators }>;
+  sort?: string;
+  page?: number;
+  limit?: number;
+  search?: string;
+  searchFields?: (keyof T)[];
+}
+
+interface SortOption<T> {
+  field: SafeDotNotation<T>;
+  order: 'ASC' | 'DESC';
+}
+
+interface FilterOperators {
+  $eq?: any;
+  $ne?: any;
+  $gt?: any;
+  $gte?: any;
+  $lt?: any;
+  $lte?: any;
+  $between?: [any, any];
+  $in?: any[];
+  $nin?: any[];
+  $like?: string;
+  $ilike?: string;
+  $null?: boolean;
+}
+
+type DeepPartial<T> = {
+  [P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P];
+};
+
+type TypeORMFilter<T> = {
+  [P in keyof T]?: T[P] | FindOperator<T[P]>;
+};
 
 export const generateSlug = async (title: string): Promise<string> => {
   const db = await getDB();

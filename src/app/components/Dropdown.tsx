@@ -15,9 +15,10 @@ interface Option {
 interface DropdownProps {
   options: Option[];
   onSelect: (option: Option) => void;
-  children?: React.ReactNode;
+  children?: React.ReactNode | ((params: any) => React.ReactNode);
   className?: string;
   withCaret: boolean;
+  withHover?: boolean;
   menuOpen?: boolean;
 }
 
@@ -28,13 +29,14 @@ const Dropdown: React.FC<DropdownProps> = ({
   className,
   withCaret = true,
   menuOpen,
+  withHover,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedOption, setSelectedOption] = useState<Option | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const handleMouseEnter = () => setIsOpen(true);
-  const handleMouseLeave = () => setIsOpen(false);
+  const handleMouseEnter = () => withHover && setIsOpen(true);
+  const handleMouseLeave = () => withHover && setIsOpen(false);
 
   const handleSelect = (option: Option) => {
     setSelectedOption(option);
@@ -62,18 +64,21 @@ const Dropdown: React.FC<DropdownProps> = ({
     <div
       className={`${styles.dropdown} ${className}`}
       ref={dropdownRef}
+      onClick={() => setIsOpen(!isOpen)}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
       <div className={styles.dropdownToggle}>
         <span>
-          {children
-            ? selectedOption
-              ? children
-              : children
-            : selectedOption
-            ? selectedOption.label
-            : "Select an option"}
+          {typeof children === "function" && children({ open: isOpen })}
+          {typeof children !== "function" &&
+            (children
+              ? selectedOption
+                ? children
+                : children
+              : selectedOption
+              ? selectedOption.label
+              : "Select an option")}
         </span>
         {withCaret ? isOpen ? <FiChevronUp /> : <FiChevronDown /> : null}
       </div>

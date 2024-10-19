@@ -145,7 +145,6 @@ const BlogPostForm: React.FC<{
                   </div>
                 </div>
               </div>
-
               <Input
                 name="title"
                 type="text"
@@ -218,8 +217,8 @@ const BlogPostTable: React.FC<{
   onPageChange: (page: number) => void;
   onEdit: (post: BlogPost) => void;
   onDelete: (post: BlogPost) => void;
-  onUpdatePost: (post: BlogPost) => void;
-  loadMoreData?: () => void;
+  onUpdatePost: (post: any) => void;
+  loadMoreData: () => void;
 }> = ({
   blogPosts,
   blogMeta,
@@ -236,6 +235,7 @@ const BlogPostTable: React.FC<{
       onSort={(field, order) => onSort(field, order)}
       params={params}
       onLoadMore={loadMoreData}
+      updateEntry={onUpdatePost}
       onPageChange={(page) => onPageChange(page)}
       fields={[
         {
@@ -248,15 +248,21 @@ const BlogPostTable: React.FC<{
           name: "Title",
           key: "title",
           label: "Title",
+          editable: true,
+          type: "textarea",
           sortable: true,
           style: {
             maxWidth: 120,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
           },
         },
         {
           name: "Date",
           key: "date",
           label: "Date",
+          editable: true,
+          type: "date",
           transform: (value: string) => moment(value).format("DD MMM YYYY"),
           sortable: true,
         },
@@ -272,9 +278,11 @@ const BlogPostTable: React.FC<{
           label: "Labels",
           sortable: false,
           transform: (value: any) =>
-            value.map((label: any) => (
-              <Label key={label.id}>{label.name}</Label>
-            )),
+            value && value.length
+              ? value.map((label: any) => (
+                  <Label key={label.id}>{label.name}</Label>
+                ))
+              : "N/A",
         },
         {
           name: "Is Featured",
@@ -283,7 +291,7 @@ const BlogPostTable: React.FC<{
           transform: (value, post) => (
             <Switch
               checked={value}
-              onChange={() => onUpdatePost({ ...post, isFeatured: !value })}
+              onChange={() => onUpdatePost({ id: post.id, isFeatured: !value })}
             />
           ),
           sortable: true,
@@ -297,7 +305,7 @@ const BlogPostTable: React.FC<{
               checked={value === "published"}
               onChange={() =>
                 onUpdatePost({
-                  ...post,
+                  id: post.id,
                   status: value === "published" ? "draft" : "published",
                 })
               }
@@ -428,24 +436,32 @@ const BlogPostsPage: React.FC = () => {
       const response = await fetch("/api/posts", {
         method: blogPost.id || values.id ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...blogPost,
-          ...values,
-          readTime,
-          content: values.content || "",
-          excerpt:
-            values.excerpt || (values.content || "").slice(0, 200) + "...",
-          status: values.status || "draft",
-          date: values.date || new Date().toISOString().split("T")[0],
-          labels:
-            values.labels?.map((label: any) => ({ id: label.value })) || [],
-          metaTags: {
-            ...blogPost.metaTags,
-            ...values.metaTags,
-            keywords:
-              values.metaTags?.keywords?.map((keyword) => keyword.value) || [],
-          },
-        }),
+        body: JSON.stringify(
+          values.id
+            ? { ...values }
+            : {
+                ...blogPost,
+                ...values,
+                readTime,
+                content: values.content || "",
+                excerpt:
+                  values.excerpt ||
+                  (values.content || "").slice(0, 200) + "...",
+                status: values.status ? "published" : "draft",
+                date: values.date || new Date().toISOString().split("T")[0],
+                labels:
+                  values.labels?.map((label: any) => ({ id: label.value })) ||
+                  [],
+                metaTags: {
+                  ...blogPost.metaTags,
+                  ...values.metaTags,
+                  keywords:
+                    values.metaTags?.keywords?.map(
+                      (keyword) => keyword.value
+                    ) || [],
+                },
+              }
+        ),
       });
 
       if (response.ok) {
@@ -475,10 +491,12 @@ const BlogPostsPage: React.FC = () => {
 
   const processPost = (post: any) => {
     const newPost = { ...post };
-    newPost.labels = post.labels.map((label: any) => ({
-      value: label.id,
-      label: label.name,
-    }));
+    if (newPost.labels) {
+      newPost.labels = post.labels.map((label: any) => ({
+        value: label.id,
+        label: label.name,
+      }));
+    }
     if (newPost.metaTags?.keywords) {
       newPost.metaTags.keywords = post.metaTags.keywords.map(
         (keyword: any) => ({
@@ -564,6 +582,7 @@ const BlogPostsPage: React.FC = () => {
         <div className="col-lg-6 col-xs-12 text-right">
           <div>
             <Button
+              color="primary"
               className="full-width-sm"
               onClick={() => {
                 setShowModal(true);

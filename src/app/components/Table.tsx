@@ -1,14 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import styles from "@/app/styles/Table.module.css";
-import {
-  FiX,
-  FiMoreHorizontal,
-  FiChevronUp,
-  FiChevronDown,
-} from "react-icons/fi";
+import { FiMoreHorizontal, FiChevronUp, FiChevronDown } from "react-icons/fi";
 import cx from "classnames";
 import Pagination from "./Pagination";
 import Dropdown from "./Dropdown";
+import Button from "./Button";
+import Input from "./Input";
 
 type Field = {
   name: string;
@@ -17,6 +14,8 @@ type Field = {
   transform?: (value: any, item: any) => any;
   sortable: boolean;
   style?: React.CSSProperties;
+  editable?: boolean;
+  type?: string;
 };
 
 const convertSorts = (sorts: string) => {
@@ -34,16 +33,14 @@ const convertSorts = (sorts: string) => {
 interface TableProps {
   className?: string;
   fields: Field[];
-  filters: any;
   meta: any;
   data: any;
-  sorts: any;
+  params: any;
   actions: any[];
   onPageChange: (page: number) => void;
   onSort: (field: string, order: string) => void;
-  onSearch: (search: string) => void;
-  params: any;
   onLoadMore: () => void;
+  updateEntry?: (entry: any) => void;
 }
 
 const Table: React.FC<TableProps> = ({
@@ -54,13 +51,22 @@ const Table: React.FC<TableProps> = ({
   actions,
   onPageChange,
   onSort,
-  onSearch,
   params,
   onLoadMore,
+  updateEntry,
 }) => {
   const [sorts, setSorts] = useState<any>(convertSorts(params.sorts));
   const [isMobile, setIsMobile] = useState<boolean>(false);
   const observerTarget = useRef(null);
+  const [currentData, setCurrentData] = useState<any[]>([]);
+  const [editingCell, setEditingCell] = useState<{
+    itemId: string | number;
+    fieldKey: string;
+  } | null>(null);
+
+  useEffect(() => {
+    setCurrentData(data);
+  }, [data]);
 
   useEffect(() => {
     setSorts(convertSorts(params.sort));
@@ -76,7 +82,7 @@ const Table: React.FC<TableProps> = ({
   }, []);
 
   const infiniteScrollObserver = useCallback(
-    (node) => {
+    (node: any) => {
       if (isMobile) {
         const observer = new IntersectionObserver(
           (entries) => {
@@ -101,10 +107,67 @@ const Table: React.FC<TableProps> = ({
     [isMobile, onLoadMore]
   );
 
+  const toggleEdit = (item: any, field: Field) => {
+    if (!field.editable) {
+      return;
+    }
+
+    if (
+      editingCell &&
+      editingCell.itemId === item.id &&
+      editingCell.fieldKey === field.key
+    ) {
+      setEditingCell(null);
+    } else {
+      setEditingCell({ itemId: item.id, fieldKey: field.key });
+    }
+  };
+
+  const saveEdit = (item: any, field: Field, value: any) => {
+    if (!field.editable || field.type === "date") {
+      return;
+    }
+
+    const oldValue = data.find((dataItem: any) => dataItem.id === item.id)[
+      field.key
+    ];
+
+    if (oldValue !== value) {
+      updateEntry && updateEntry({ ...item, [field.key]: value });
+    }
+
+    setEditingCell(null);
+  };
+
+  const onEditChange = (item: any, field: Field, value: any) => {
+    const newData = currentData.map((dataItem) => {
+      if (dataItem.id === item.id) {
+        return {
+          ...dataItem,
+          [field.key]: value,
+        };
+      }
+      return dataItem;
+    });
+
+    setCurrentData(newData);
+
+    if (field.type === "date") {
+      saveEdit(
+        item,
+        {
+          ...field,
+          type: "text",
+        },
+        value
+      );
+    }
+  };
+
   return (
     <div className={cx(className, styles.table, { [styles.mobile]: isMobile })}>
-      {data.length === 0 && <p>No data available to be displayed</p>}
-      {data.length > 0 && (
+      {currentData.length === 0 && <p>No data available to be displayed</p>}
+      {currentData.length > 0 && (
         <>
           <table>
             <thead>
@@ -138,13 +201,53 @@ const Table: React.FC<TableProps> = ({
               </tr>
             </thead>
             <tbody>
-              {data.map((item: any, key: number) => (
-                <tr key={`${item.id}-${key}`}>
+              {currentData.map((item: any, key: number) => (
+                <tr key={`${key}`}>
                   {fields.map((field) => (
-                    <td key={field.key} data-label={field.label}>
-                      {field.transform && typeof field.transform === "function"
-                        ? field.transform(item[field.key], item)
-                        : item[field.key]}
+                    <td
+                      key={field.key}
+                      data-label={field.label}
+                      {...(field.style ? { style: field.style } : {})}
+                      className={cx({
+                        [styles.editable]:
+                          field.editable &&
+                          !(
+                            editingCell &&
+                            editingCell.itemId === item.id &&
+                            editingCell.fieldKey === field.key
+                          ),
+                      })}
+                      onClick={() => !editingCell && toggleEdit(item, field)}
+                    >
+                      {!(
+                        editingCell &&
+                        editingCell.itemId === item.id &&
+                        editingCell.fieldKey === field.key
+                      ) && (
+                        <div>
+                          {field.transform &&
+                          typeof field.transform === "function"
+                            ? field.transform(item[field.key], item)
+                            : item[field.key]}
+                        </div>
+                      )}
+                      {editingCell &&
+                        editingCell.itemId === item.id &&
+                        editingCell.fieldKey === field.key && (
+                          <Input
+                            value={item[field.key]}
+                            name={field.key}
+                            style={{ marginBottom: 0 }}
+                            autoFocus
+                            type={field.type || "text"}
+                            onBlur={() => {
+                              saveEdit(item, field, item[field.key]);
+                            }}
+                            onChange={(value) => {
+                              onEditChange(item, field, value);
+                            }}
+                          />
+                        )}
                     </td>
                   ))}
                   {actions.length > 0 && (
@@ -159,7 +262,17 @@ const Table: React.FC<TableProps> = ({
                         withCaret={false}
                         onSelect={() => {}}
                       >
-                        <FiMoreHorizontal />
+                        {({ open }) => {
+                          return (
+                            <>
+                              <FiMoreHorizontal className="hidden-sm" />
+                              <Button className="visible-sm">
+                                Actions{" "}
+                                {open ? <FiChevronUp /> : <FiChevronDown />}
+                              </Button>
+                            </>
+                          );
+                        }}
                       </Dropdown>
                     </td>
                   )}
@@ -179,9 +292,7 @@ const Table: React.FC<TableProps> = ({
             <div
               ref={infiniteScrollObserver}
               className={styles.loadMoreTrigger}
-            >
-              {meta.currentPage < meta.totalPages && <p>Loading more...</p>}
-            </div>
+            />
           )}
         </>
       )}

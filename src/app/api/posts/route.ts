@@ -6,6 +6,7 @@ import { Label } from '@/lib/entities/Label';
 import { QueryHandler, QueryOptions } from '@/lib/utils-server';
 import EntityValidator from '@/lib/entities/EntityValidator';
 import moment from 'moment';
+import fs from 'fs/promises';
 import { generateSlug } from '@/lib/utils-server';
 
 export async function GET(req: NextRequest) {
@@ -16,11 +17,11 @@ export async function GET(req: NextRequest) {
     const queryHandler = new QueryHandler(blogPostRepository);
 
     queryHandler.setRoleFields('public', [ 
-      'id', 'title', 'excerpt', 'date', 'readTime', 'views', 'isFeatured', 'slug', 'author.name:author', 'labels.name'
+      'id', 'title', 'excerpt', 'date', 'readTime', 'views', 'isFeatured', 'slug', 'author.name:author', 'labels.name', 'metaTags'
     ]);
 
     queryHandler.setRoleFields('admin', [
-      'id', 'title', 'content', 'excerpt', 'date', 'labels', 'author.avatar:avatar', 'author.name:author', 'readTime', 'views', 'isFeatured', 'slug', 'metaTags', 'status'
+      'id', 'title', 'content', 'excerpt', 'date', 'labels', 'author.avatar:avatar', 'author.name:author', 'readTime', 'views', 'isFeatured', 'slug', 'status'
     ]);
 
     const url = new URL(req.url);
@@ -101,10 +102,11 @@ export async function PUT(req: NextRequest) {
     const db = await getDB();
     const blogPostRepository = db.getRepository(BlogPost);
     const labelRepository = db.getRepository(Label);
+    const reqBody = await req.json();
 
-    const { id, title, content, date, excerpt, readTime, isFeatured, status, labels: labelIds, metaTags } = await req.json();
+    let { id, title, content, date, excerpt, readTime, isFeatured, status, labels: labelIds, metaTags } = reqBody;
 
-    const blogPost = await blogPostRepository.findOne({
+    let blogPost = await blogPostRepository.findOne({
       where: { id },
       relations: ['author', 'labels'],
     });
@@ -117,22 +119,15 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 403 });
     }
 
-    const labels = await labelRepository.findByIds(labelIds.map((label: any) => label.id));
-
-    blogPost.title = title;
-    blogPost.content = content;
-    blogPost.date = moment(date).toDate();
-    blogPost.readTime = readTime;
-    blogPost.isFeatured = isFeatured;
-    blogPost.labels = labels;
-    blogPost.metaTags = metaTags;
-    blogPost.status = status;
-    blogPost.excerpt = excerpt;
-    blogPost.metaTags = {
-      ...blogPost.metaTags,
-      ...metaTags,
+    if (date) {
+      reqBody.date = moment(date).toDate();
     }
 
+    if (title) {
+      reqBody.slug = await generateSlug(title);
+    }
+
+    blogPost = blogPostRepository.merge(blogPost, reqBody);
     const errors = await EntityValidator.validate(blogPost, BlogPost);
 
     if (Object.keys(errors).length > 0) {
@@ -142,7 +137,6 @@ export async function PUT(req: NextRequest) {
     await blogPostRepository.save(blogPost);
     return NextResponse.json(blogPost);
   } catch (error) {
-    console.log(error);
     return NextResponse.json({ message: 'Error updating blog post' }, { status: 500 });
   }
 }
@@ -163,6 +157,20 @@ export async function DELETE(req: NextRequest) {
       where: { id },
       relations: ['author'],
     });
+
+    const images = blogPost.content.match(/<img[^>]*src="([^"]*)"[^>]*>/g);
+
+    if (images) {
+      const sources = imagesSourves.map((img) => img.match(/src="([^"]*)"/)[1]);
+      const actions = [];
+
+      for (const src of sources) {
+        actions.push(fs.unlink(path.join(process.cwd(), 'public', 'uploads', src)));
+      }
+
+      actions.push(uploadRepository.delete({ path: In(sources) }));
+      await Promise.all(actions);
+    }
 
     if (!blogPost) {
       return NextResponse.json({ message: 'Blog post not found' }, { status: 404 });

@@ -78,13 +78,15 @@ interface InputProps {
   accept?: string;
   maxLength?: number;
   autoFocus?: boolean;
+  autoScaleHeight?: boolean;
   value?: unknown;
-  onChange?: (value: unknown) => void;
-  onBlur?: () => void;
+  onChange?: (value: unknown, e?: any) => void;
+  onBlur?: (e?: any) => void;
   error?: string;
   isMulti?: boolean;
   isClearable?: boolean;
   isSearchable?: boolean;
+  style?: React.CSSProperties;
 }
 
 const Input: React.FC<InputProps> = React.memo(
@@ -100,6 +102,7 @@ const Input: React.FC<InputProps> = React.memo(
     options,
     floatingLabel,
     loading,
+    autoScaleHeight,
     disabled,
     withClear,
     className,
@@ -114,6 +117,7 @@ const Input: React.FC<InputProps> = React.memo(
     isMulti,
     isClearable,
     isSearchable,
+    style,
   }) => {
     let formContext = {};
     try {
@@ -144,6 +148,31 @@ const Input: React.FC<InputProps> = React.memo(
     const error = isControlled ? propError : formContext?.errors[name];
     const touched = isControlled ? true : formContext?.touched[name];
 
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+    useEffect(() => {
+      if (type === "textarea" && autoScaleHeight && textareaRef.current) {
+        adjustTextareaHeight();
+      }
+    }, [value, type, autoScaleHeight]);
+
+    const adjustTextareaHeight = () => {
+      const textarea = textareaRef.current;
+      if (textarea) {
+        textarea.style.height = "auto";
+        textarea.style.height = `${textarea.scrollHeight}px`;
+      }
+    };
+
+    const handleTextareaChange = (
+      e: React.ChangeEvent<HTMLTextAreaElement>
+    ) => {
+      handleChange(e.target.value);
+      if (autoScaleHeight) {
+        adjustTextareaHeight();
+      }
+    };
+
     useEffect(() => {
       if (floatingLabel && inputRef.current) {
         if (value) {
@@ -158,7 +187,8 @@ const Input: React.FC<InputProps> = React.memo(
       }
     }, [value, floatingLabel, name, autoFocus]);
 
-    const handleFocus = () => {
+    const handleFocus = (e: any) => {
+      e && e.stopPropagation();
       setIsFocused(true);
       if (!isControlled) {
         formContext?.setFieldTouched(name, true);
@@ -178,19 +208,21 @@ const Input: React.FC<InputProps> = React.memo(
       [formContext]
     );
 
-    const handleBlur = () => {
+    const handleBlur = (e: any) => {
+      e && e.stopPropagation();
       setIsFocused(false);
       if (isControlled) {
-        propOnBlur?.();
+        propOnBlur?.(e);
       } else {
         value && formContext?.setFieldTouched(name, true);
         touched && debouncedValidation(name, value);
       }
     };
 
-    const handleChange = (newValue: any) => {
+    const handleChange = (newValue: any, e?: any) => {
+      e && e.stopPropagation();
       if (isControlled) {
-        propOnChange(newValue);
+        propOnChange(newValue, e);
       } else {
         formContext?.setFieldValue(name, newValue);
         touched && debouncedValidation(name, newValue);
@@ -265,7 +297,7 @@ const Input: React.FC<InputProps> = React.memo(
           e: React.ChangeEvent<
             HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
           >
-        ) => handleChange(e.target.value),
+        ) => handleChange(e.target.value, e),
         onFocus: handleFocus,
         onBlur: handleBlur,
         disabled,
@@ -300,8 +332,10 @@ const Input: React.FC<InputProps> = React.memo(
             <>
               <textarea
                 {...commonProps}
+                ref={textareaRef}
                 ref={inputRef as React.RefObject<HTMLTextAreaElement>}
                 maxLength={maxLength}
+                onChange={handleTextareaChange}
               />
               {maxLength && (
                 <div className={styles.characterCount}>
@@ -352,10 +386,10 @@ const Input: React.FC<InputProps> = React.memo(
         case "datetime":
           return (
             <DatePicker
-              selected={value ? new Date(value) : null}
-              onChange={(date: Date) =>
-                handleChange(moment(date).utc().format())
-              }
+              selected={value ? moment(value).toDate() : null}
+              onChange={(date: Date, e: any) => {
+                handleChange(moment(date).utc().format(), e);
+              }}
               showTimeSelect={type !== "date"}
               showTimeSelectOnly={type === "time"}
               timeIntervals={15}
@@ -424,6 +458,7 @@ const Input: React.FC<InputProps> = React.memo(
         className={`${styles.inputWrapper} ${
           floatingLabel && (isFocused || value) ? styles.floatingLabel : ""
         }`}
+        {...(style ? { style } : {})}
       >
         {label &&
           type !== "switch" &&

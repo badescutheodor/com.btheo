@@ -522,23 +522,31 @@ a:focus {
   background-color: var(--bg) !important;
 }
 
-.visible-xs {
-  display: block !important;
-}
-
-.hidden-xs {
-  display: none !important;
-}
-
-@media (min-width: 576px) {
+@media (max-width: 576px) {
   .visible-xs {
     display: none !important;
   }
+
+  .hidden-xs {
+    display: none !important;
+  }
+}
+
+@media (max-width: 768px) {
   .visible-sm {
     display: block !important;
   }
   .hidden-sm {
     display: none !important;
+  }
+}
+
+@media (min-width: 768px) {
+  .visible-sm {
+    display: none !important;
+  }
+  .hidden-sm {
+    display: block !important;
   }
 }
 
@@ -556,10 +564,6 @@ a:focus {
 @media (min-width: 768px) {
   .border-radius-10-md {
     border-radius: 10px;
-  }
-
-  .visible-sm {
-    display: none !important;
   }
   .visible-md {
     display: block !important;

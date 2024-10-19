@@ -32,7 +32,7 @@ export default async function RootLayout({
       className={`${inter.className} ${poppins.className}`}
       suppressHydrationWarning
     >
-      <body>
+      <body suppressHydrationWarning>
         <SettingsProvider initialSettings={settings}>
           <ThemeProvider>
             <Layout initialUser={user} initialSettings={settings}>

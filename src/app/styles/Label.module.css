@@ -3,9 +3,9 @@
   font-size: var(--base-font-size);
   color: var(--text);
   margin-bottom: var(--spacing-xs);
-  cursor: pointer;
   background: var(--bg-darkest);
   padding: 5px 10px;
+  user-select: none;
   margin: 0 5px 5px 0;
 }
 
@@ -13,6 +13,7 @@
   /* Reset default anchor styles */
   text-decoration: none;
   color: inherit;
+  cursor: pointer;
 
   /* Add styles for link state */
   &:hover,

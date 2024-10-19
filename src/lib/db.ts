@@ -1,38 +1,59 @@
 import "reflect-metadata";
 import { DataSource, DataSourceOptions } from "typeorm";
 import * as Entities from './entities';
+import path from 'path';
+
+const isDevelopment = process.env.NODE_ENV === 'development';
 
 const options: DataSourceOptions = {
   type: "sqlite",
-  database: "db.sqlite",
+  database: path.join(process.cwd(), 'db.sqlite'),
   entities: Object.values(Entities),
-  synchronize: true,
-  logging: false,
+  synchronize: isDevelopment,
+  logging: isDevelopment,
 };
 
-export const AppDataSource = new DataSource(options);
+class DatabaseConnectionManager {
+  private static instance: DatabaseConnectionManager;
+  private connection: DataSource | null = null;
 
-let initialized = false;
+  private constructor() {}
 
-export async function initializeDataSource() {
-    if (!initialized) {
-        try {
-            if (!AppDataSource.isInitialized) { 
-                await AppDataSource.initialize();
-            } else if (!AppDataSource.isConnected) {
-                await AppDataSource.connect();
-            }
-            initialized = true;
-            console.log("Data Source has been initialized!");
-        } catch (err) {
-            console.error("Error during Data Source initialization", err);
-            throw err;
-        }
+  public static getInstance(): DatabaseConnectionManager {
+    if (!DatabaseConnectionManager.instance) {
+      DatabaseConnectionManager.instance = new DatabaseConnectionManager();
     }
-    
-    return AppDataSource;
+    return DatabaseConnectionManager.instance;
+  }
+
+  public async getConnection(): Promise<DataSource> {
+    if (!this.connection) {
+      this.connection = new DataSource(options);
+    }
+
+    if (!this.connection.isInitialized) {
+      await this.connection.initialize();
+      console.log("Data Source has been initialized!");
+    }
+
+    return this.connection;
+  }
+
+  public async closeConnection(): Promise<void> {
+    if (this.connection && this.connection.isInitialized) {
+      await this.connection.destroy();
+      this.connection = null;
+      console.log("Data Source has been closed.");
+    }
+  }
 }
 
-export async function getDB() {
-    return initializeDataSource();
-}
+export const getDB = async (): Promise<DataSource> => {
+  const manager = DatabaseConnectionManager.getInstance();
+  return manager.getConnection();
+};
+
+export const closeDB = async (): Promise<void> => {
+  const manager = DatabaseConnectionManager.getInstance();
+  return manager.closeConnection();
+};

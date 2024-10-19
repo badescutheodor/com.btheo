@@ -1,7 +1,6 @@
 .table {
   margin-top: var(--spacing-lg);
   width: 100%;
-  overflow-x: auto;
 }
 
 .table table {
@@ -12,10 +11,11 @@
 .table th {
   font-size: var(--small-size);
   text-align: left;
+  user-select: none;
 }
 
 .table td,
-.table td > div {
+.table td > div > div {
   font-size: var(--small-size);
 }
 
@@ -58,6 +58,17 @@
 .loadMoreTrigger {
   text-align: center;
   padding: 20px;
+}
+
+.editable:hover > div {
+  border: 2px solid var(--bg-lightest);
+  background: var(--bg-lightest);
+  padding: 5px 10px;
+  display: inline;
+  margin-left: -10px;
+  margin-right: -10px;
+  cursor: pointer;
+  user-select: none;
 }
 
 @media (max-width: 767px) {
