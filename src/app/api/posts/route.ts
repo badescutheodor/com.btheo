@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
       limit: parseInt(url.searchParams.get('limit') || '10', 10),
       sort: url.searchParams.get('sort') || undefined,
       search: url.searchParams.get('search') || undefined,
-      searchFields: ['title', 'excerpt', 'content'],
+      searchFields: ['author', 'content'],
       filters:{ 
         labels: url.searchParams.get('label') ? [{ name: url.searchParams.get('label') }] : undefined,
         isFeatured: url.searchParams.get('isFeatured') === 'true' ? true : undefined,

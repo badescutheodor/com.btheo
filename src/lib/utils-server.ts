@@ -73,6 +73,7 @@ export class QueryHandler<T extends ObjectLiteral> {
   private roleFields: Record<string, SafeDotNotation<T>[]> = {};
   private fieldRenames: Record<string, Record<string, string>> = {};
   private reverseFieldRenames: Record<string, Record<string, string>> = {};
+  private fieldAliases: Record<string, string> = {};
 
   constructor(private repository: Repository<T>) {}
 
@@ -80,6 +81,7 @@ export class QueryHandler<T extends ObjectLiteral> {
     this.roleFields[role] = fields;
     this.fieldRenames[role] = {};
     this.reverseFieldRenames[role] = {};
+    this.fieldAliases = {}; // Reset field aliases
 
     fields.forEach(field => {
       const [path, rename] = (field as string).split(':');
@@ -88,8 +90,15 @@ export class QueryHandler<T extends ObjectLiteral> {
         this.reverseFieldRenames[role][rename] = path;
         this.roleFields[role] = this.roleFields[role].filter(f => f !== field);
         this.roleFields[role].push(path as SafeDotNotation<T>);
+        
+        // Set field alias
+        this.fieldAliases[rename] = path;
       }
     });
+  }
+  
+  setFieldAliases(aliases: Record<string, string>) {
+    this.fieldAliases = aliases;
   }
 
   async filterMulti(options: QueryOptions<T>, relations: string[] = [], role?: string) {
@@ -162,8 +171,6 @@ export class QueryHandler<T extends ObjectLiteral> {
   private applyFieldRenames(result: { data: T[], meta?: any }, role?: string): { data: any[], meta?: any } {
     if (!role || !this.fieldRenames[role]) return result;
 
-    const selectList = this.roleFields[role] || [];
-
     const renamedData = result.data.map(item => {
       const renamedItem: any = JSON.parse(JSON.stringify(item)); // Deep clone to avoid modifying original data
       const fieldsToDelete: string[] = [];
@@ -171,8 +178,8 @@ export class QueryHandler<T extends ObjectLiteral> {
       for (const [path, newName] of Object.entries(this.fieldRenames[role])) {
         const parts = path.split('.');
         let value = renamedItem;
-        let parent = null;
         let lastValidIndex = -1;
+        let parent: any = null;
 
         for (let i = 0; i < parts.length; i++) {
           if (value && typeof value === 'object' && parts[i] in value) {
@@ -219,42 +226,61 @@ export class QueryHandler<T extends ObjectLiteral> {
     return { ...result, data: renamedData };
   }
 
-  private buildWhereClause(options: QueryOptions<T>): FindOptionsWhere<T> {
-    let where: FindOptionsWhere<T> = {};
-
+  private buildWhereClause(options: QueryOptions<T>, role?: string): FindOptionsWhere<T> | FindOptionsWhere<T>[] {
+    let baseWhere: FindOptionsWhere<T> = {};
+  
     if (options.filters) {
-      Object.assign(where, this.parseFilters(options.filters));
+      Object.assign(baseWhere, this.parseFilters(options.filters));
     }
-
+  
     if (options.search && options.searchFields) {
-      const searchConditions: FindOptionsWhere<T>[] = options.searchFields.map(field => ({
-        [field]: ILike(`%${options.search}%`)
-      } as FindOptionsWhere<T>));
-      if (searchConditions.length === 1) {
-        Object.assign(where, searchConditions[0]);
-      } else if (searchConditions.length > 1) {
-        where = searchConditions.reduce((acc, condition) => {
-          return Object.keys(condition).reduce((innerAcc, key) => {
-            if (!innerAcc[key]) {
-              innerAcc[key] = [];
-            }
-            innerAcc[key].push(condition[key]);
-            return innerAcc;
-          }, acc);
-        }, {} as Record<string, any>);
-      
-        // Convert arrays to TypeORM's In operator
-        Object.keys(where).forEach(key => {
-          if (Array.isArray(where[key])) {
-            where[key] = { $in: where[key] };
-          }
-        });
+      const searchConditions: FindOptionsWhere<T>[] = options.searchFields.map(field => {
+        const actualField = this.getActualField(field as string, role);
+        return this.buildSearchCondition(actualField, options.search!);
+      });
+  
+      // Combine base conditions with OR search conditions
+      return [
+        { ...baseWhere, ...searchConditions[0] },
+        ...searchConditions.slice(1).map(condition => ({ ...baseWhere, ...condition }))
+      ];
+    }
+  
+    return baseWhere;
+  }
+  
+  private buildSearchCondition(field: string, searchTerm: string): FindOptionsWhere<T> {
+    const parts = field.split('.');
+    if (parts.length === 1) {
+      // Direct field on the entity
+      return { [field]: ILike(`%${searchTerm}%`) } as FindOptionsWhere<T>;
+    } else {
+      // Nested property (relation)
+      const condition: any = {};
+      let current = condition;
+      for (let i = 0; i < parts.length - 1; i++) {
+        current[parts[i]] = {};
+        current = current[parts[i]];
       }
+      current[parts[parts.length - 1]] = ILike(`%${searchTerm}%`);
+      return condition;
+    }
+  }
+  
+  private getActualField(field: string, role?: string): string {
+    // Check if the field is an alias
+    if (this.fieldAliases[field]) {
+      return this.fieldAliases[field];
     }
 
-    return where;
-  }
+    // Check if the field is a renamed field
+    if (role && this.reverseFieldRenames[role] && this.reverseFieldRenames[role][field]) {
+      return this.reverseFieldRenames[role][field];
+    }
 
+    return field;
+  }
+  
   private parseFilters(filters: DeepPartial<T & { [key: string]: FilterOperators }>): TypeORMFilter<T> {
     const parsedFilters: TypeORMFilter<T> = {};
     for (const [key, value] of Object.entries(filters)) {
