@@ -6,7 +6,7 @@ import MarkdownIt from "markdown-it";
 import hljs from "highlight.js";
 import "highlight.js/styles/github.css";
 import { confirm } from "@/lib/utils-client";
-import { FiFilePlus, FiEye, FiTrash2, FiEdit } from "react-icons/fi";
+import { FiFilePlus, FiEye, FiTrash2, FiEdit, FiSearch } from "react-icons/fi";
 import Modal from "@/app/components/Modal";
 import Button from "@/app/components/Button";
 import { FormProvider } from "@/app/components/FormProvider";
@@ -17,6 +17,7 @@ import Input from "@/app/components/Input";
 import Switch from "@/app/components/Switch";
 import Label from "@/app/components/Label";
 import Accordion from "@/app/components/Accordion";
+import { debounce } from "@/lib/utils-client";
 
 const MdEditor = dynamic(() => import("react-markdown-editor-lite"), {
   ssr: false,
@@ -331,6 +332,7 @@ const BlogPostsPage: React.FC = () => {
   const [blogMeta, setBlogMeta] = useState<any>({});
   const [labels, setLabels] = useState<{ value: string; label: string }[]>([]);
   const [showModal, setShowModal] = useState(false);
+  const [search, setSearch] = useState("");
   const [blogPost, setBlogPost] = useState<Partial<BlogPost>>({
     title: "",
     content: "",
@@ -354,20 +356,18 @@ const BlogPostsPage: React.FC = () => {
     const setParameters = { ...params, ...newParams };
     try {
       const response = await fetch(
-        "/api/posts?" + qs.stringify(setParameters, { encode: false })
+        "/api/posts?" +
+          qs.stringify(setParameters, {
+            encode: false,
+            ignoreQueryPrefix: true,
+          })
       );
       if (response.ok) {
         const posts = await response.json();
         setBlogPosts(posts.data);
         setBlogMeta(posts.meta);
         setParams(setParameters);
-        window.history.replaceState(
-          {},
-          "",
-          window.location.pathname +
-            "?" +
-            qs.stringify(setParameters, { encode: false })
-        );
+        //window.location.search = qs.stringify(setParameters, { encode: false });
       } else {
         throw new Error("Failed to fetch blog posts");
       }
@@ -495,6 +495,11 @@ const BlogPostsPage: React.FC = () => {
     }
   };
 
+  const handleSearch = useCallback(
+    debounce((value) => fetchBlogPosts({ search: value }), 500),
+    []
+  );
+
   return (
     <div>
       <Modal
@@ -512,8 +517,20 @@ const BlogPostsPage: React.FC = () => {
         </div>
       </Modal>
       <div className="row">
-        <div className="col-6">
+        <div className="col-lg-2">
           <h3 className="m-0">Posts</h3>
+        </div>
+        <div className="col-lg-4 col-xs-12">
+          <Input
+            iconLeft={<FiSearch />}
+            name={"search"}
+            placeholder={"Search posts..."}
+            onChange={(value) => {
+              setSearch(value);
+              handleSearch(value);
+            }}
+            value={search}
+          />
         </div>
         <div className="col-6 text-right">
           <div>
