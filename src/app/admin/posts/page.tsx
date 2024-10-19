@@ -117,29 +117,35 @@ const BlogPostForm: React.FC<{
             <div>
               <div className="row">
                 <div className="col-lg-6">
-                  <Button
-                    type="submit"
-                    color="primary"
-                    fullWidth
-                    className="mb-lg"
-                    onClick={submitForm}
-                  >
-                    Save
-                  </Button>
+                  <div>
+                    <Button
+                      type="submit"
+                      color="primary"
+                      fullWidth
+                      className="mb-lg"
+                      onClick={submitForm}
+                    >
+                      Save
+                    </Button>
+                  </div>
                 </div>
                 <div className="col-lg-6">
-                  <Button
-                    type="submit"
-                    color="primary"
-                    fullWidth
-                    inverted
-                    className="mb-lg"
-                  >
-                    <FiEye className="mr-xs" />
-                    Preview
-                  </Button>
+                  <div>
+                    <Button
+                      type="submit"
+                      color="primary"
+                      fullWidth
+                      inverted
+                      className="mb-lg"
+                      onClick={submitForm}
+                    >
+                      <FiEye className="mr-xs" />
+                      Preview
+                    </Button>
+                  </div>
                 </div>
               </div>
+
               <Input
                 name="title"
                 type="text"
@@ -564,7 +570,7 @@ const BlogPostsPage: React.FC = () => {
                 setBlogPost({});
               }}
             >
-              <FiFilePlus className={"mr-xs"} /> Create new post
+              <FiFilePlus />
             </Button>
           </div>
         </div>
