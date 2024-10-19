@@ -9,14 +9,14 @@ import { confirm } from "@/lib/utils-client";
 import { FiFilePlus, FiEye, FiTrash2, FiEdit } from "react-icons/fi";
 import Modal from "@/app/components/Modal";
 import Button from "@/app/components/Button";
-import Input from "@/app/components/Input";
 import { FormProvider } from "@/app/components/FormProvider";
-import Accordion from "@/app/components/Accordion";
-import * as yup from "yup";
 import moment from "moment";
+import * as yup from "yup";
+import qs from "qs";
+import Input from "@/app/components/Input";
 import Switch from "@/app/components/Switch";
 import Label from "@/app/components/Label";
-import qs from "qs";
+import Accordion from "@/app/components/Accordion";
 
 const MdEditor = dynamic(() => import("react-markdown-editor-lite"), {
   ssr: false,
@@ -25,6 +25,7 @@ const MdEditor = dynamic(() => import("react-markdown-editor-lite"), {
 import "react-markdown-editor-lite/lib/index.css";
 import Table from "@/app/components/Table";
 
+// Types
 interface Label {
   id: number;
   name: string;
@@ -54,6 +55,276 @@ interface BlogPost {
   };
 }
 
+// Utility functions
+const mdParser = new MarkdownIt({
+  highlight: function (str, lang) {
+    if (lang && hljs.getLanguage(lang)) {
+      try {
+        return hljs.highlight(lang, str).value;
+      } catch (__) {}
+    }
+    return "";
+  },
+});
+
+const calculateReadTime = (content: string): string => {
+  const wordsPerMinute = 200;
+  content = content || "";
+  const wordCount = content.trim().split(/\s+/).length;
+  const readTime = Math.ceil(wordCount / wordsPerMinute);
+  return `${readTime} min read`;
+};
+
+// BlogPostForm Component
+const BlogPostForm: React.FC<{
+  blogPost: Partial<BlogPost>;
+  labels: { value: string; label: string }[];
+  onSubmit: (values: any) => void;
+}> = ({ blogPost, labels, onSubmit }) => {
+  return (
+    <FormProvider
+      onSubmit={onSubmit}
+      initialValues={blogPost.id ? blogPost : {}}
+      validationSchema={{
+        title: {
+          rules: [
+            yup.string().required("Title is required"),
+            yup.string().max(100, "Title must be at most 100 characters"),
+          ],
+        },
+      }}
+    >
+      {({ values, submitForm, setFieldValue }) => (
+        <div className="row editor-row">
+          <div className="col-lg-8">
+            <div className="h-full">
+              <MdEditor
+                style={{
+                  height: "100%",
+                  minHeight: 500,
+                  marginBottom: 30,
+                }}
+                autoFocus
+                renderHTML={(text) => mdParser.render(text)}
+                onChange={(value) => setFieldValue("content", value.text)}
+                value={values.content}
+              />
+            </div>
+          </div>
+          <div className="col-lg-4 xs-mt-md">
+            <div>
+              <div className="row">
+                <div className="col-lg-6">
+                  <Button
+                    type="submit"
+                    color="primary"
+                    fullWidth
+                    className="mb-lg"
+                    onClick={submitForm}
+                  >
+                    Save
+                  </Button>
+                </div>
+                <div className="col-lg-6">
+                  <Button
+                    type="submit"
+                    color="primary"
+                    fullWidth
+                    inverted
+                    className="mb-lg"
+                  >
+                    <FiEye className="mr-xs" />
+                    Preview
+                  </Button>
+                </div>
+              </div>
+              <Input
+                name="title"
+                type="text"
+                maxLength={100}
+                placeholder="Title *"
+              />
+              <Input
+                name="excerpt"
+                type="textarea"
+                placeholder="Excerpt"
+                maxLength={200}
+              />
+              <div className="flex">
+                <Input type="switch" label="Featured" name="isFeatured" />
+                <Input type="switch" label="Published" name="status" />
+              </div>
+              <Input type="date" name="date" placeholder="Created date" />
+              <Input
+                type="react-select"
+                name="labels"
+                label="Labels"
+                placeholder=""
+                options={labels}
+                isMulti
+              />
+              <Accordion title="SEO">
+                <Input name="metaTags.title" type="text" placeholder="Title" />
+                <Input
+                  name="metaTags.description"
+                  type="textarea"
+                  placeholder="Description"
+                />
+                <Input
+                  name="metaTags.keywords"
+                  type="react-select-creatable"
+                  label="Keywords"
+                  placeholder=""
+                  isMulti
+                />
+                <Input
+                  name="metaTags.ogImage"
+                  type="text"
+                  placeholder="OG Image"
+                />
+                <Input
+                  name="metaTags.ogTitle"
+                  type="text"
+                  placeholder="OG Title"
+                />
+                <Input
+                  name="metaTags.ogDescription"
+                  type="text"
+                  placeholder="OG Description"
+                />
+              </Accordion>
+            </div>
+          </div>
+        </div>
+      )}
+    </FormProvider>
+  );
+};
+
+// BlogPostTable Component
+const BlogPostTable: React.FC<{
+  blogPosts: BlogPost[];
+  blogMeta: any;
+  params: any;
+  onSort: (field: string, order: string) => void;
+  onPageChange: (page: number) => void;
+  onEdit: (post: BlogPost) => void;
+  onDelete: (post: BlogPost) => void;
+  onUpdatePost: (post: BlogPost) => void;
+}> = ({
+  blogPosts,
+  blogMeta,
+  params,
+  onSort,
+  onPageChange,
+  onEdit,
+  onDelete,
+  onUpdatePost,
+}) => {
+  return (
+    <Table
+      onSort={(field, order) => onSort(field, order)}
+      params={params}
+      onPageChange={(page) => onPageChange(page)}
+      fields={[
+        {
+          name: "id",
+          key: "id",
+          label: "ID",
+          sortable: true,
+        },
+        {
+          name: "Title",
+          key: "title",
+          label: "Title",
+          sortable: true,
+          style: {
+            maxWidth: 120,
+          },
+        },
+        {
+          name: "Date",
+          key: "date",
+          label: "Date",
+          transform: (value: string) => moment(value).format("DD MMM YYYY"),
+          sortable: true,
+        },
+        {
+          name: "Author",
+          key: "author",
+          label: "Author",
+          sortable: true,
+        },
+        {
+          name: "Labels",
+          key: "labels",
+          label: "Labels",
+          sortable: false,
+          transform: (value: any) =>
+            value.map((label: any) => (
+              <Label key={label.id}>{label.name}</Label>
+            )),
+        },
+        {
+          name: "Is Featured",
+          key: "isFeatured",
+          label: "Is Featured",
+          transform: (value, post) => (
+            <Switch
+              checked={value}
+              onChange={() => onUpdatePost({ ...post, isFeatured: !value })}
+            />
+          ),
+          sortable: true,
+        },
+        {
+          name: "Published",
+          key: "status",
+          label: "Published",
+          transform: (value, post) => (
+            <Switch
+              checked={value === "published"}
+              onChange={() =>
+                onUpdatePost({
+                  ...post,
+                  status: value === "published" ? "draft" : "published",
+                })
+              }
+            />
+          ),
+          sortable: true,
+        },
+      ]}
+      actions={[
+        {
+          key: "edit",
+          label: (
+            <>
+              <FiEdit className="mr-xs" />
+              Edit
+            </>
+          ),
+          onClick: (item: any) => onEdit(item),
+        },
+        {
+          key: "delete",
+          labelClassName: "error",
+          label: (
+            <>
+              <FiTrash2 className="mr-xs" />
+              Delete
+            </>
+          ),
+          onClick: (item: any) => onDelete(item),
+        },
+      ]}
+      meta={blogMeta}
+      data={blogPosts}
+    />
+  );
+};
+
+// Main BlogPostsPage Component
 const BlogPostsPage: React.FC = () => {
   const { user } = useUser();
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
@@ -73,25 +344,6 @@ const BlogPostsPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [params, setParams] = useState({});
 
-  const mdParser = new MarkdownIt({
-    highlight: function (str, lang) {
-      if (lang && hljs.getLanguage(lang)) {
-        try {
-          return hljs.highlight(lang, str).value;
-        } catch (__) {}
-      }
-      return "";
-    },
-  });
-
-  const calculateReadTime = useCallback((content: string): string => {
-    const wordsPerMinute = 200;
-    content = content || "";
-    const wordCount = content.trim().split(/\s+/).length;
-    const readTime = Math.ceil(wordCount / wordsPerMinute);
-    return `${readTime} min read`;
-  }, []);
-
   useEffect(() => {
     const params = qs.parse(window.location.search);
     fetchBlogPosts(params);
@@ -109,7 +361,6 @@ const BlogPostsPage: React.FC = () => {
         setBlogPosts(posts.data);
         setBlogMeta(posts.meta);
         setParams(setParameters);
-        console.log(setParameters);
         window.history.replaceState(
           {},
           "",
@@ -198,15 +449,11 @@ const BlogPostsPage: React.FC = () => {
   };
 
   const processPost = (post: any) => {
-    const newPost = {
-      ...post,
-    };
-
+    const newPost = { ...post };
     newPost.labels = post.labels.map((label: any) => ({
       value: label.id,
       label: label.name,
     }));
-
     if (newPost.metaTags?.keywords) {
       newPost.metaTags.keywords = post.metaTags.keywords.map(
         (keyword: any) => ({
@@ -215,12 +462,7 @@ const BlogPostsPage: React.FC = () => {
         })
       );
     }
-
     return newPost;
-  };
-
-  const setBlogPostForEdit = (post: any) => {
-    setBlogPost(processPost(post));
   };
 
   const handleDeleteBlogPost = async (post: any) => {
@@ -253,10 +495,6 @@ const BlogPostsPage: React.FC = () => {
     }
   };
 
-  const updatePost = (post = {}) => {
-    handleBlogPost(processPost(post));
-  };
-
   return (
     <div>
       <Modal
@@ -266,142 +504,11 @@ const BlogPostsPage: React.FC = () => {
         title={`${blogPost.id ? "Edit Post" : "Add Post"}`}
       >
         <div className={"mt-md"}>
-          <FormProvider
+          <BlogPostForm
+            blogPost={blogPost}
+            labels={labels}
             onSubmit={handleBlogPost}
-            initialValues={blogPost.id ? blogPost : {}}
-            validationSchema={{
-              title: {
-                rules: [
-                  yup.string().required("Title is required"),
-                  yup.string().max(100, "Title must be at most 100 characters"),
-                ],
-              },
-            }}
-          >
-            {({ values, submitForm, setFieldValue }) => {
-              return (
-                <div className="row editor-row">
-                  <div className="col-lg-8">
-                    <div className="h-full">
-                      <MdEditor
-                        style={{
-                          height: "100%",
-                          minHeight: 500,
-                          marginBottom: 30,
-                        }}
-                        autoFocus
-                        renderHTML={(text) => mdParser.render(text)}
-                        onChange={(value) =>
-                          setFieldValue("content", value.text)
-                        }
-                        value={values.content}
-                      />
-                    </div>
-                  </div>
-                  <div className="col-lg-4 xs-mt-md">
-                    <div>
-                      <div className="row">
-                        <div className="col-lg-6">
-                          <div>
-                            <Button
-                              type="submit"
-                              color="primary"
-                              fullWidth
-                              className="mb-lg"
-                              onClick={submitForm}
-                            >
-                              Save
-                            </Button>
-                          </div>
-                        </div>
-                        <div className="col-lg-6">
-                          <div>
-                            <Button
-                              type="submit"
-                              color="primary"
-                              fullWidth
-                              inverted
-                              className="mb-lg"
-                            >
-                              <FiEye className="mr-xs" />
-                              Preview
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                      <Input
-                        name="title"
-                        type="text"
-                        maxLength={100}
-                        placeholder="Title *"
-                      />
-                      <Input
-                        name="excerpt"
-                        type="textarea"
-                        placeholder="Excerpt"
-                        maxLength={200}
-                      />
-                      <div className="flex">
-                        <Input
-                          type="switch"
-                          label="Featured"
-                          name="isFeatured"
-                        />
-                        <Input type="switch" label="Published" name="status" />
-                      </div>
-                      <Input
-                        type="date"
-                        name="date"
-                        placeholder="Created date"
-                      />
-                      <Input
-                        type="react-select"
-                        name="labels"
-                        label="Labels"
-                        placeholder=""
-                        options={labels}
-                        isMulti
-                      />
-                      <Accordion title="SEO">
-                        <Input
-                          name="metaTags.title"
-                          type="text"
-                          placeholder="Title"
-                        />
-                        <Input
-                          name="metaTags.description"
-                          type="textarea"
-                          placeholder="Description"
-                        />
-                        <Input
-                          name="metaTags.keywords"
-                          type="react-select-creatable"
-                          label="Keywords"
-                          placeholder=""
-                          isMulti
-                        />
-                        <Input
-                          name="metaTags.ogImage"
-                          type="text"
-                          placeholder="OG Image"
-                        />
-                        <Input
-                          name="metaTags.ogTitle"
-                          type="text"
-                          placeholder="OG Title"
-                        />
-                        <Input
-                          name="metaTags.ogDescription"
-                          type="text"
-                          placeholder="OG Description"
-                        />
-                      </Accordion>
-                    </div>
-                  </div>
-                </div>
-              );
-            }}
-          </FormProvider>
+          />
         </div>
       </Modal>
       <div className="row">
@@ -421,110 +528,22 @@ const BlogPostsPage: React.FC = () => {
           </div>
         </div>
       </div>
-      <Table
+      <BlogPostTable
+        blogPosts={blogPosts}
+        blogMeta={blogMeta}
+        params={params}
         onSort={(field, order) =>
           fetchBlogPosts({ ...params, sort: `${field}:${order}` })
         }
-        params={params}
         onPageChange={(page) => fetchBlogPosts({ page })}
-        fields={[
-          {
-            name: "id",
-            key: "id",
-            label: "ID",
-            sortable: true,
-          },
-          {
-            name: "Title",
-            key: "title",
-            label: "Title",
-            sortable: true,
-            style: {
-              maxWidth: 120,
-            },
-          },
-          {
-            name: "Date",
-            key: "date",
-            label: "Date",
-            transform: (value: string) => moment(value).format("DD MMM YYYY"),
-            sortable: true,
-          },
-          {
-            name: "Author",
-            key: "author",
-            label: "Author",
-            sortable: true,
-          },
-          {
-            name: "Labels",
-            key: "labels",
-            label: "Labels",
-            sortable: false,
-            transform: (value: any) =>
-              value.map((label: any) => (
-                <Label key={label.id}>{label.name}</Label>
-              )),
-          },
-          {
-            name: "Is Featured",
-            key: "isFeatured",
-            label: "Is Featured",
-            transform: (value, post) => (
-              <Switch
-                checked={value}
-                onChange={() => updatePost({ ...post, isFeatured: !value })}
-              />
-            ),
-            sortable: true,
-          },
-          {
-            name: "Published",
-            key: "status",
-            label: "Published",
-            transform: (value, post) => (
-              <Switch
-                checked={value === "published"}
-                onChange={() =>
-                  updatePost({
-                    ...post,
-                    status: value === "published" ? "draft" : "published",
-                  })
-                }
-              />
-            ),
-            sortable: true,
-          },
-        ]}
-        actions={[
-          {
-            key: "edit",
-            label: (
-              <>
-                <FiEdit className="mr-xs" />
-                Edit
-              </>
-            ),
-            onClick: (item: any) => {
-              setBlogPostForEdit(item);
-              setShowModal(true);
-            },
-          },
-          {
-            key: "delete",
-            labelClassName: "error",
-            label: (
-              <>
-                <FiTrash2 className="mr-xs" />
-                Delete
-              </>
-            ),
-            onClick: (item: any) => handleDeleteBlogPost(item),
-          },
-        ]}
-        meta={blogMeta}
-        data={blogPosts}
+        onEdit={(post) => {
+          setBlogPost(processPost(post));
+          setShowModal(true);
+        }}
+        onDelete={handleDeleteBlogPost}
+        onUpdatePost={(post) => handleBlogPost(processPost(post))}
       />
+      {error && <div className="error-message">{error}</div>}
     </div>
   );
 };

@@ -135,17 +135,20 @@ export interface QueryOptions<T extends ObjectLiteral> {
 export class QueryHandler<T extends ObjectLiteral> {
   private roleFields: Record<string, SafeDotNotation<T>[]> = {};
   private fieldRenames: Record<string, Record<string, string>> = {};
+  private fieldAliases: Record<string, Record<string, string>> = {};
 
   constructor(private repository: Repository<T>) {}
 
   setRoleFields(role: string, fields: SafeDotNotation<T>[]) {
     this.roleFields[role] = fields;
     this.fieldRenames[role] = {};
+    this.fieldAliases[role] = {};
 
     fields.forEach(field => {
       const [path, rename] = (field as string).split(':');
       if (rename) {
         this.fieldRenames[role][path] = rename;
+        this.fieldAliases[role][rename] = path;
         this.roleFields[role] = this.roleFields[role].filter(f => f !== field);
         this.roleFields[role].push(path as SafeDotNotation<T>);
       }
@@ -159,14 +162,14 @@ export class QueryHandler<T extends ObjectLiteral> {
   }
 
   async filterOne(options: QueryOptions<T>, relations: string[] = [], role?: string): Promise<T | null> {
-    ole = role || 'public';
+    role = role || 'public';
     const result = await this.executeFilterOne(options, relations, role);
     return result ? this.applyFieldRenames({ data: [result] }, role).data[0] : null;
   }
 
   private async executeFilterMulti(options: QueryOptions<T>, relations: string[] = [], role?: string) {
     const where = this.buildWhereClause(options);
-    const order = this.buildOrderClause(options.sort);
+    const order = this.buildOrderClause(options.sort, role);
     const select = this.buildSelectClause(role);
     
     const [items, total] = await this.repository.findAndCount({
@@ -191,7 +194,7 @@ export class QueryHandler<T extends ObjectLiteral> {
 
   private async executeFilterOne(options: QueryOptions<T>, relations: string[] = [], role?: string): Promise<T | null> {
     const where = this.buildWhereClause(options);
-    const order = this.buildOrderClause(options.sort);
+    const order = this.buildOrderClause(options.sort, role);
     const select = this.buildSelectClause(role);
 
     return await this.repository.findOne({
@@ -333,7 +336,7 @@ export class QueryHandler<T extends ObjectLiteral> {
     return parsedFilters;
   }
 
-  private isFilterOperators(value): value is FilterOperators {
+  private isFilterOperators(value: any): value is FilterOperators {
     if (typeof value !== 'object' || value === null) return false;
     const operatorKeys = ['$eq', '$ne', '$gt', '$gte', '$lt', '$lte', '$between', '$in', '$nin', '$like', '$ilike', '$null'];
     return operatorKeys.some(key => key in value);
@@ -349,10 +352,10 @@ export class QueryHandler<T extends ObjectLiteral> {
     if ('$between' in operators) return Between(operators.$between[0], operators.$between[1]);
     if ('$in' in operators) return In(operators.$in);
     if ('$nin' in operators) return Not(In(operators.$nin));
-    if ('$like' in operators) return Like(`%${operators.$like}%`);
+    if ('$like' in operators) return ILike(`%${operators.$like}%`);
     if ('$ilike' in operators) return ILike(`%${operators.$ilike}%`);
     if ('$null' in operators) return operators.$null ? IsNull() : Not(IsNull());
-    return operators;
+    return operators as any;
   }
 
   private parseFilterValue(value: any): any {
@@ -362,16 +365,54 @@ export class QueryHandler<T extends ObjectLiteral> {
     return value;
   }
 
-  private buildOrderClause(sortParam?: string): FindOptionsOrder<T> | undefined {
+  private buildOrderClause(sortParam?: string, role?: string): FindOptionsOrder<T> | undefined {
     if (!sortParam) return undefined;
 
     const sortOptions = this.parseSortParams(sortParam);
     if (!sortOptions || sortOptions.length === 0) return undefined;
 
     return sortOptions.reduce((orderBy, { field, order }) => {
-      orderBy[field] = order as any;
+      const actualField = this.resolveFieldAlias(field, role);
+      this.setNestedProperty(orderBy, actualField, order);
       return orderBy;
     }, {} as FindOptionsOrder<T>);
+  }
+
+  private resolveFieldAlias(field: string, role?: string): string {
+    if (role && this.fieldAliases[role]) {
+      const actualField = this.fieldAliases[role][field];
+      return actualField || field;
+    }
+    return field;
+  }
+
+  private setNestedProperty(obj: any, path: string, value: any): void {
+    const parts = path.split('.');
+    let current = obj;
+    for (let i = 0; i < parts.length - 1; i++) {
+      if (!(parts[i] in current)) {
+        current[parts[i]] = {};
+      }
+      current = current[parts[i]];
+    }
+    current[parts[parts.length - 1]] = value;
+  }
+
+  private parseSortParams(sortParam: string): SortOption<T>[] {
+    return sortParam.split(',').map(part => {
+      const [field, order] = part.split(':');
+      return {
+        field: field.trim(),
+        order: (order?.toUpperCase() as 'ASC' | 'DESC') || 'ASC'
+      };
+    }).filter(this.isValidSortOption);
+  }
+
+  private isValidSortOption(option: any): option is SortOption<T> {
+    return typeof option === 'object' && 
+           'field' in option && 
+           'order' in option &&
+           (option.order === 'ASC' || option.order === 'DESC');
   }
 
   private buildSelectClause(role?: string): FindOptionsSelect<T> | undefined {
@@ -396,23 +437,6 @@ export class QueryHandler<T extends ObjectLiteral> {
       });
     });
     return select;
-  }
-
-  private parseSortParams(sortParam: string): SortOption<T>[] {
-    return sortParam.split(',').map(part => {
-      const [field, order] = part.split(':');
-      return {
-        field: field as keyof T,
-        order: (order?.toUpperCase() as 'ASC' | 'DESC') || 'ASC'
-      };
-    }).filter(this.isValidSortOption);
-  }
-
-  private isValidSortOption(option: any): option is SortOption<T> {
-    return typeof option === 'object' && 
-           'field' in option && 
-           'order' in option &&
-           (option.order === 'ASC' || option.order === 'DESC');
   }
 }
 
