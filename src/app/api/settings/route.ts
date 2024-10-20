@@ -68,45 +68,49 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PUT(req: NextRequest) {
-    const user = await getSession(req);
+  const user = await getSession(req);
 
-    if (!user) {
-        return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
-    }
-
-    const db = await getDB();
-
-    try {
-      const settingRepository = db.getRepository(Setting);
-      const reqBody = await req.json();
-      const { key, value } = reqBody;
-  
-      let setting = await settingRepository.findOne({ where: { key } });
-      
-      if (!setting) {
-        return NextResponse.json({ message: 'Setting not found' }, { status: 404 });
-      }
-      
-      setting.value = value;
-
-      const errors = await EntityValidator.validate(setting, Setting);
-      
-      if (Object.keys(errors).length > 0) {
-        return NextResponse.json({ errors }, { status: 400 });
-      }
-
-      await settingRepository.save(setting);
-      return NextResponse.json(setting);
-    } catch (error) {
-      return NextResponse.json({ message: 'Error updating setting' }, { status: 500 });
-    }
+  if (!user) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
+
+  const db = await getDB();
+
+  try {
+    const settingRepository = db.getRepository(Setting);
+    const reqBody = await req.json();
+    const { key, value } = reqBody;
+
+    let setting = await settingRepository.findOne({ where: { key } });
+    
+    if (!setting) {
+      return NextResponse.json({ message: 'Setting not found' }, { status: 404 });
+    }
+    
+    setting.value = value;
+
+    const errors = await EntityValidator.validate(setting, Setting);
+    
+    if (Object.keys(errors).length > 0) {
+      return NextResponse.json({ errors }, { status: 400 });
+    }
+
+    await settingRepository.save(setting);
+    return NextResponse.json(setting);
+  } catch (error) {
+    return NextResponse.json({ message: 'Error updating setting' }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+
+}
 
 export async function OPTIONS(req: NextRequest) {
   return new NextResponse(null, {
     status: 204,
     headers: {
-      'Allow': 'GET, POST, PUT'
+      'Allow': 'GET, POST, PUT, DELETE'
     }
   });
 }

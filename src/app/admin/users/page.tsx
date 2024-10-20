@@ -1,10 +1,16 @@
 "use client";
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useUser } from "@/app/contexts/UserContext";
 import { useFileManagement } from "@/hooks/useFiles";
-import ReactCrop, { Crop, PixelCrop } from "react-image-crop";
+import { Crop, PixelCrop } from "react-image-crop";
 import "react-image-crop/dist/ReactCrop.css";
-import { FiUserPlus, FiEdit, FiTrash2, FiSearch } from "react-icons/fi";
+import {
+  FiUserPlus,
+  FiEdit,
+  FiTrash2,
+  FiSearch,
+  FiUpload,
+} from "react-icons/fi";
 import Modal from "@/app/components/Modal";
 import Button from "@/app/components/Button";
 import { FormProvider } from "@/app/components/FormProvider";
@@ -15,6 +21,8 @@ import { debounce } from "@/lib/utils-client";
 import qs from "qs";
 import * as yup from "yup";
 import Alert from "@/app/components/Alert";
+import ImageCropper from "@/app/components/ImageCropper";
+import FormErrors from "@/app/components/FormErrors";
 
 interface Upload {
   id: number;
@@ -36,6 +44,7 @@ const UserForm: React.FC<{
   onFileSelect: (event: React.ChangeEvent<HTMLInputElement>) => void;
   imageSrc: string | null;
   crop: Crop;
+  setImageSrc: (src: string | null) => void;
   setCrop: (crop: Crop) => void;
   setCompletedCrop: (crop: PixelCrop) => void;
   setImageRef: (ref: HTMLImageElement | null) => void;
@@ -44,11 +53,14 @@ const UserForm: React.FC<{
   onSubmit,
   onFileSelect,
   imageSrc,
+  setImageSrc,
   crop,
   setCrop,
   setCompletedCrop,
   setImageRef,
 }) => {
+  const fileRef = useRef<HTMLInputElement>(null);
+
   return (
     <FormProvider
       onSubmit={onSubmit}
@@ -73,7 +85,29 @@ const UserForm: React.FC<{
     >
       {({ values, submitForm, setFieldValue }) => (
         <div className="row">
-          <div className="col-lg-6">
+          <FormErrors />
+          <div className="col-lg-2" style={{ marginTop: 16 }}>
+            <div onClick={(e) => fileRef.current?.click()}>
+              {user.avatar ? (
+                <img
+                  src={user.avatar}
+                  width="60px"
+                  className={"circle cursor-pointer"}
+                />
+              ) : (
+                <div className="fake-avatar">
+                  <FiUpload />
+                </div>
+              )}
+            </div>
+            <input
+              type="file"
+              onChange={onFileSelect}
+              ref={fileRef}
+              style={{ visibility: "hidden" }}
+            />
+          </div>
+          <div className="col-lg-4">
             <Input name="name" type="text" label={"Name *"} autoFocus />
           </div>
           <div className="col-lg-6">
@@ -99,40 +133,31 @@ const UserForm: React.FC<{
             />
           </div>
           <div className="col-lg-12">
-            <Input
-              type="file"
-              accept="image/*"
-              label="Avatar"
-              onChange={onFileSelect}
-            />
             {imageSrc && (
-              <ReactCrop
-                crop={crop}
-                locked
-                onChange={(c) => setCrop(c)}
-                onComplete={(c) => setCompletedCrop(c)}
-                aspect={1}
-              >
-                <img
-                  ref={(ref) => setImageRef(ref)}
-                  src={imageSrc}
-                  style={{ maxWidth: "100%" }}
-                  alt="Crop me"
+              <div>
+                <ImageCropper
+                  imageSrc={imageSrc}
+                  crop={crop}
+                  setCrop={setCrop}
+                  onCompletedCrop={setCompletedCrop}
+                  setImageRef={setImageRef}
+                  minWidth={180}
+                  maxWidth={180}
                 />
-              </ReactCrop>
+                <div style={{ float: "right" }}>
+                  <Button
+                    onClick={(e) => setImageSrc(null)}
+                    className={"mt-xs"}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
             )}
-            {!imageSrc && user.avatar && (
-              <img
-                src={user.avatar}
-                alt="User avatar"
-                width="180"
-                height="180"
-              />
-            )}
-            <Input name="bio" type="textarea" autoScaleHeight label={"Bio"} />
           </div>
           <div className="col-lg-12 mt-md">
             <div>
+              <Input name="bio" type="textarea" autoScaleHeight label={"Bio"} />
               <Button
                 type="submit"
                 color="primary"
@@ -220,8 +245,8 @@ const UsersPage: React.FC = () => {
     }
   };
 
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+  const handleFileSelect = (e) => {
+    const file = e.target.files[0];
     if (file) {
       const reader = new FileReader();
       reader.onload = () => {
@@ -268,6 +293,7 @@ const UsersPage: React.FC = () => {
   );
 
   const handleImageUpload = useCallback(async () => {
+    console.log("Uploaded file:", imageRef, completedCrop);
     if (imageRef && completedCrop) {
       try {
         const croppedImageBlob = await getCroppedImg(imageRef, completedCrop);
@@ -275,6 +301,7 @@ const UsersPage: React.FC = () => {
           type: "image/jpeg",
         });
         const uploadedFile = await uploadFile(file, { type: "avatar" });
+
         return uploadedFile;
       } catch (error) {
         console.error("Failed to upload file:", error);
@@ -310,9 +337,10 @@ const UsersPage: React.FC = () => {
         setShowModal(false);
 
         if (user.id === userToSave.id) {
+          const savedUser = await response.json();
           setUser({
             ...user,
-            ...userToSave,
+            ...savedUser,
           });
         }
       } else {
@@ -391,6 +419,7 @@ const UsersPage: React.FC = () => {
             onSubmit={handleUser}
             onFileSelect={handleFileSelect}
             imageSrc={imageSrc}
+            setImageSrc={setImageSrc}
             crop={crop}
             setCrop={setCrop}
             setCompletedCrop={setCompletedCrop}

@@ -46,7 +46,8 @@ export async function PUT(req: NextRequest, { params }: any) {
   }
 
   await userRepository.save(entity);
-  return NextResponse.json(user);
+  entity.avatar = entity.avatar ? entity.avatar.path : null;
+  return NextResponse.json(entity);
 }
 
 export async function DELETE(req: NextRequest, { params }: any) {

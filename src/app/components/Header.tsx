@@ -94,8 +94,8 @@ const Header = ({ settings }: Settings) => {
                 <img
                   src={user.avatar}
                   alt={user.name}
-                  width={30}
-                  height={30}
+                  width={40}
+                  height={40}
                   className="circle mr-sm"
                 />
               )}

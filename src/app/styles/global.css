@@ -1345,3 +1345,14 @@ a:focus {
     margin-top: var(--spacing-md) !important;
   }
 }
+
+.fake-avatar {
+  width: 60px;
+  height: 60px;
+  background: var(--gray-400);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  cursor: pointer;
+}
