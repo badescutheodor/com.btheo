@@ -198,7 +198,7 @@ const Input: React.FC<InputProps> = React.memo(
       e && e.stopPropagation();
       setIsFocused(true);
       if (!isControlled) {
-        formContext?.setFieldTouched(name, true);
+        !autoFocus && formContext?.setFieldTouched(name, true);
       }
     };
 
