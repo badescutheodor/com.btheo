@@ -33,6 +33,11 @@
   box-shadow: 0 10px 20px rgba(0, 0, 0, 0.08);
 }
 
+.link:hover,
+.link:focus {
+  text-decoration: none;
+}
+
 .postContent {
   background-color: var(--bg);
   padding: 1.5rem;

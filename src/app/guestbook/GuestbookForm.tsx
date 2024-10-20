@@ -5,9 +5,13 @@ import AutoFormBuilder from "../components/AutoFormBuilder";
 import FormErrors from "../components/FormErrors";
 import * as yup from "yup";
 import { FiCheckCircle } from "react-icons/fi";
+import { useAnalytics } from "../contexts/AnalyticsContext";
 
 export default function GuestbookForm({ createGuestbook }: any) {
+  const { y } = useAnalytics();
+
   const handleSubmit = async (values = {}) => {
+    y("CONVERSION", { form: "guestbook-sign", name: values.name });
     return await createGuestbook(values);
   };
 

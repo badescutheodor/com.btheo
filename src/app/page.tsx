@@ -1,8 +1,7 @@
 import { Metadata } from "next";
 import FeaturedPosts from "@/app/components/FeaturedPosts";
 import { getSettings } from "@/lib/utils-server";
-import Button from "@/app/components/Button";
-import { FiFileText } from "react-icons/fi";
+import ResumeButton from "@/app/components/ResumeButton";
 
 export const metadata: Metadata = {
   title: "Next.js",
@@ -16,18 +15,7 @@ export default async function Home() {
       <div className="profile">
         <h1>{settings.homeTitle}</h1>
         <p className="col-lg-8 col-md-12">{settings.homeDescription}</p>
-        {settings.resumeLink && (
-          <Button
-            size={"large"}
-            icon={FiFileText}
-            target={"_blank"}
-            className={"full-width-md border-radius-10-md"}
-            href={settings.resumeLink}
-            maskAnimated={2}
-          >
-            My Resume
-          </Button>
-        )}
+        {settings.resumeLink && <ResumeButton href={settings.resumeLink} />}
         <FeaturedPosts />
       </div>
     </div>

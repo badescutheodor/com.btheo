@@ -3,6 +3,7 @@ import { BlogPost } from '@/lib/entities/BlogPost';
 import { Comment } from '@/lib/entities/Comment';
 import { markdown } from '@/lib/markdown';
 import { QueryHandler } from '@/lib/utils-server';
+import { title } from 'process';
 
 interface GetBlogPostsOptions {
   page?: number;
@@ -22,19 +23,14 @@ export async function getFeaturedPosts(limit: number) {
 
   const posts = await blogPostRepository.find({
     where: { isFeatured: true },
-    relations: ['author'],
     order: { date: 'DESC' },
     take: limit,
   });
 
   return posts.map(post => ({
-    id: post.id,
     title: post.title,
     slug: post.slug,
-    content: post.content,
-    author: post.author.name,
-    avatar: post.author.avatar?.filename,
-    previewImage: extractFirstImage(post.content),
+    views: post.views,
   }));
 }
 

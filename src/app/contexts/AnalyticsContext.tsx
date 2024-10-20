@@ -24,8 +24,7 @@ enum EventType {
 }
 
 interface AnalyticsContextType {
-  y: (type: EventType, data: object) => Promise<void>;
-  trackCustomEvent: (eventName: string, eventData: object) => Promise<void>;
+  y: (type: any, data?: object) => Promise<void>;
 }
 
 const AnalyticsContext = createContext<AnalyticsContextType | undefined>(
@@ -128,13 +127,6 @@ export const AnalyticsProvider: React.FC<AnalyticsProviderProps> = ({
     []
   );
 
-  const trackCustomEvent = useCallback(
-    async (eventName: string, eventData: object) => {
-      await trackEvent(EventType.CUSTOM_EVENT, { eventName, ...eventData });
-    },
-    [trackEvent]
-  );
-
   const trackSessionStart = useCallback(() => {
     if (!hasTrackedSessionStart.current) {
       trackEvent(EventType.SESSION_START);
@@ -222,7 +214,7 @@ export const AnalyticsProvider: React.FC<AnalyticsProviderProps> = ({
   const cleanupEventListeners = () => {};
 
   return (
-    <AnalyticsContext.Provider value={{ y: trackEvent, trackCustomEvent }}>
+    <AnalyticsContext.Provider value={{ y: trackEvent }}>
       {children}
     </AnalyticsContext.Provider>
   );
