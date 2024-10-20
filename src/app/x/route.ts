@@ -55,7 +55,7 @@ interface ImageParams {
 }
 
 const processImage = async (params: ImageParams, imagePath: string): Promise<Buffer> => {
-  const { width, height, crop, smartCropEnabled, format, filter, watermark, removeBg, cropX, cropY, cropW, cropH } = params;
+  let { width, height, crop, smartCropEnabled, format, filter, watermark, removeBg, cropX, cropY, cropW, cropH } = params;
   
   let transformer = sharp(await fs.readFile(imagePath));
 
@@ -73,6 +73,9 @@ const processImage = async (params: ImageParams, imagePath: string): Promise<Buf
   }
 
   if (width || height) {
+    width = +width > 1920 ? 1920 : width;
+    height = +height > 1080 ? 1080 : height;
+
     let resizeOptions: any = {};
 
     if (width) {
