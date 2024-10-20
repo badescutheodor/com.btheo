@@ -8,13 +8,11 @@ import ReactCrop, {
 import "react-image-crop/dist/ReactCrop.css";
 
 const ZOOM_STEP = 0.1;
-const ZOOM_MIN = 1;
+const ZOOM_MIN = 0.5; // Allow zooming out below 1x
 const ZOOM_MAX = 3;
 
 interface ImageCropperProps {
   imageSrc: string;
-  crop: Crop;
-  setCrop: React.Dispatch<React.SetStateAction<Crop>>;
   onCompletedCrop: (crop: PixelCrop) => void;
   setImageRef: (ref: HTMLImageElement | null) => void;
   maxWidth: number;
@@ -23,67 +21,65 @@ interface ImageCropperProps {
 
 const ImageCropper: React.FC<ImageCropperProps> = ({
   imageSrc,
-  crop,
-  setCrop,
   onCompletedCrop,
   setImageRef,
   maxWidth,
   maxHeight,
 }) => {
+  const [crop, setCrop] = useState<Crop | null>(null);
   const [zoom, setZoom] = useState<number>(1);
   const [imgWidth, setImgWidth] = useState<number>(0);
   const [imgHeight, setImgHeight] = useState<number>(0);
   const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false); // Track drag state
   const containerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
+
+  // Calculate the centered crop box
+  const setInitialCrop = useCallback(
+    (width: number, height: number) => {
+      const cropSize = Math.min(maxWidth, maxHeight); // Crop size will be the smaller of maxWidth or maxHeight
+      const newCrop: Crop = {
+        unit: "px",
+        width: cropSize,
+        height: cropSize,
+        x: (width - cropSize) / 2, // Centering the crop box horizontally
+        y: (height - cropSize) / 2, // Centering the crop box vertically
+      };
+      setCrop(newCrop);
+    },
+    [maxWidth, maxHeight]
+  );
 
   const onImageLoad = useCallback(
     (e: React.SyntheticEvent<HTMLImageElement>) => {
       const { width, height } = e.currentTarget;
       setImgWidth(width);
       setImgHeight(height);
-
-      const cropWidthPercentage = (maxWidth / width) * 100;
-      const cropHeightPercentage = (maxHeight / height) * 100;
-      const smallerPercentage = Math.min(
-        cropWidthPercentage,
-        cropHeightPercentage,
-        20
-      );
-
-      const newCrop = centerCrop(
-        makeAspectCrop(
-          {
-            unit: "%",
-            width: smallerPercentage,
-          },
-          1,
-          width,
-          height
-        ),
-        width,
-        height
-      );
-
-      setCrop(newCrop);
+      setInitialCrop(width, height); // Center the crop box after the image loads
     },
-    [maxWidth, maxHeight, setCrop]
+    [setInitialCrop]
   );
 
   const handleCropChange = (newCrop: Crop) => {
     setCrop(newCrop);
   };
 
-  const handleCompletedCrop = (pixelCrop: PixelCrop) => {
-    const scaledCrop: PixelCrop = {
-      ...pixelCrop,
-      x: Math.round(pixelCrop.x / zoom - pan.x),
-      y: Math.round(pixelCrop.y / zoom - pan.y),
-      width: Math.round(pixelCrop.width / zoom),
-      height: Math.round(pixelCrop.height / zoom),
-    };
-    onCompletedCrop(scaledCrop);
-  };
+  const handleCompletedCrop = useCallback(
+    (pixelCrop: PixelCrop) => {
+      if (!pixelCrop || !imageRef.current) return;
+
+      const scaledCrop: PixelCrop = {
+        ...pixelCrop,
+        x: Math.round(pixelCrop.x / zoom - pan.x),
+        y: Math.round(pixelCrop.y / zoom - pan.y),
+        width: Math.round(pixelCrop.width / zoom),
+        height: Math.round(pixelCrop.height / zoom),
+      };
+      onCompletedCrop(scaledCrop);
+    },
+    [zoom, pan, onCompletedCrop]
+  );
 
   const handleWheel = useCallback(
     (e: WheelEvent) => {
@@ -118,14 +114,19 @@ const ImageCropper: React.FC<ImageCropperProps> = ({
       const startY = e.clientY;
       const startPan = { ...pan };
 
+      setIsDragging(true); // Start dragging
+
       const handleMouseMove = (e: MouseEvent) => {
-        setPan({
-          x: startPan.x + (e.clientX - startX) / zoom,
-          y: startPan.y + (e.clientY - startY) / zoom,
-        });
+        if (isDragging) {
+          setPan({
+            x: startPan.x + (e.clientX - startX) / zoom,
+            y: startPan.y + (e.clientY - startY) / zoom,
+          });
+        }
       };
 
       const handleMouseUp = () => {
+        setIsDragging(false); // End dragging
         document.removeEventListener("mousemove", handleMouseMove);
         document.removeEventListener("mouseup", handleMouseUp);
       };
@@ -133,7 +134,7 @@ const ImageCropper: React.FC<ImageCropperProps> = ({
       document.addEventListener("mousemove", handleMouseMove);
       document.addEventListener("mouseup", handleMouseUp);
     },
-    [pan, zoom]
+    [pan, zoom, isDragging]
   );
 
   useEffect(() => {
@@ -148,34 +149,12 @@ const ImageCropper: React.FC<ImageCropperProps> = ({
     };
   }, [handleWheel]);
 
-  // Set initial crop on component mount
+  // Ensure crop is set again after image loads
   useEffect(() => {
     if (imgWidth && imgHeight) {
-      const cropWidthPercentage = (maxWidth / imgWidth) * 100;
-      const cropHeightPercentage = (maxHeight / imgHeight) * 100;
-      const smallerPercentage = Math.min(
-        cropWidthPercentage,
-        cropHeightPercentage,
-        20
-      );
-
-      const newCrop = centerCrop(
-        makeAspectCrop(
-          {
-            unit: "%",
-            width: smallerPercentage,
-          },
-          1,
-          imgWidth,
-          imgHeight
-        ),
-        imgWidth,
-        imgHeight
-      );
-
-      setCrop(newCrop);
+      setInitialCrop(imgWidth, imgHeight);
     }
-  }, [imgWidth, imgHeight, maxWidth, maxHeight, setCrop]);
+  }, [imgWidth, imgHeight, setInitialCrop]);
 
   return (
     <div
@@ -184,7 +163,8 @@ const ImageCropper: React.FC<ImageCropperProps> = ({
         maxWidth: "100%",
         maxHeight: "400px",
         overflow: "hidden",
-        cursor: "move",
+        cursor: isDragging ? "grabbing" : "grab", // Update cursor when dragging
+        backgroundColor: "#f0f0f0", // Background color when zooming out
       }}
       onMouseDown={handleMouseDown}
     >
@@ -193,8 +173,12 @@ const ImageCropper: React.FC<ImageCropperProps> = ({
         onChange={handleCropChange}
         onComplete={handleCompletedCrop}
         aspect={1}
-        minWidth={100}
-        minHeight={100}
+        keepSelection
+        minWidth={maxWidth}
+        maxWidth={maxWidth}
+        maxHeight={maxHeight}
+        minHeight={maxHeight}
+        ruleOfThirds
       >
         <img
           ref={(ref) => {
@@ -208,7 +192,7 @@ const ImageCropper: React.FC<ImageCropperProps> = ({
             maxHeight: "none",
             transform: `scale(${zoom}) translate(${pan.x}px, ${pan.y}px)`,
             transformOrigin: "top left",
-            transition: "transform 0.3s",
+            transition: isDragging ? "none" : "transform 0.3s", // Disable smooth transition while dragging
           }}
           onLoad={onImageLoad}
           draggable="false"

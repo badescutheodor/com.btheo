@@ -141,8 +141,8 @@ const UserForm: React.FC<{
                   setCrop={setCrop}
                   onCompletedCrop={setCompletedCrop}
                   setImageRef={setImageRef}
-                  minWidth={180}
                   maxWidth={180}
+                  maxHeight={180}
                 />
                 <div style={{ float: "right" }}>
                   <Button
@@ -293,7 +293,6 @@ const UsersPage: React.FC = () => {
   );
 
   const handleImageUpload = useCallback(async () => {
-    console.log("Uploaded file:", imageRef, completedCrop);
     if (imageRef && completedCrop) {
       try {
         const croppedImageBlob = await getCroppedImg(imageRef, completedCrop);
