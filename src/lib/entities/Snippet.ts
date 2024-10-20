@@ -53,16 +53,4 @@ export class Snippet {
   @ValidateNested({ each: true })
   @Type(() => Label)
   labels: Label[];
-
-  static async validate(entryData: Partial<Snippet>): Promise<{ [key: string]: string[] }> {
-    const entry = plainToClass(Snippet, entryData);
-    const errors = await validate(entry);
-    
-    return errors.reduce((acc, error: ValidationError) => {
-      if (error.property && error.constraints) {
-        acc[error.property] = Object.values(error.constraints);
-      }
-      return acc;
-    }, {} as { [key: string]: string[] });
-} 
 }

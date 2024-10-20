@@ -3,6 +3,8 @@ import { getSession } from '@/lib/auth';
 import { getDB } from '@/lib/db';
 import { Snippet } from '@/lib/entities/Snippet';
 import { Label } from '@/lib/entities/Label';
+import EntityValidator from '@/lib/entities/EntityValidator';
+import { QueryHandler, QueryOptions } from '@/lib/utils-server';
 
 export async function GET(req: NextRequest) {
     try {
@@ -13,12 +15,31 @@ export async function GET(req: NextRequest) {
       }
   
       const db = await getDB();
+      const url = new URL(req.url);
       const snippetRepository = db.getRepository(Snippet);
-      const snippets = await snippetRepository.find({
-        relations: ['author', 'labels'],
-      });
-  
-      return NextResponse.json(snippets);
+      const queryHandler = new QueryHandler(snippetRepository);
+
+
+      const options: QueryOptions = {
+        page: url.searchParams.get('page'),
+        limit: url.searchParams.get('limit'),
+        search: url.searchParams.get('search'),
+        searchFields: ['title', 'content', 'language', 'labels.name'],
+      };
+
+      queryHandler.setRoleFields('admin', [
+        'id',
+        'title',
+        'content',
+        'views',
+        'loved',
+        'language',
+        'isFeatured',
+        'author',
+      ]);
+
+      const result = await queryHandler.filterMulti(options, ['labels', 'author'], user?.role);
+      return NextResponse.json(result);
     } catch (error) {
       return NextResponse.json({ message: 'Error fetching snippets' }, { status: 500 });
     }
@@ -37,7 +58,7 @@ export async function POST(req: NextRequest) {
         const labelRepository = db.getRepository(Label);
         const reqBody = await req.json();
         const { title, content, language, isFeatured, labelIds } = reqBody;
-        const errors = await Snippet.validate(reqBody);
+        const errors = await EntityValidator.validate(reqBody, Snippet);
         
         if (Object.keys(errors).length > 0) {
           return NextResponse.json({ errors }, { status: 400 });
