@@ -73,7 +73,17 @@ const processImage = async (params: ImageParams, imagePath: string): Promise<Buf
   }
 
   if (width || height) {
-    transformer = transformer.resize({ width, height });
+    let resizeOptions: any = {};
+
+    if (width) {
+      resizeOptions['width'] = +width;
+    }
+
+    if (height) {
+      resizeOptions['height'] = +height;
+    }
+
+    transformer = transformer.resize(resizeOptions);
   }
 
   if (filter) {
@@ -110,6 +120,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
     await fs.stat(imagePath);
   } catch (err) {
+    console.log("ERROR", err);
     return handleError();
   }
 
@@ -126,7 +137,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const processedImagePath = join(
     process.cwd(),
     'public',
-    'processed_images',
+    'uploads',
     `${basename(params.url, extname(params.url))}_${params.width}x${params.height}_crop_${params.crop}.jpg`
   );
 
