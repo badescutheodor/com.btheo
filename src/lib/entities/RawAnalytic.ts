@@ -11,7 +11,8 @@ export enum AnalyticType {
     CONVERSION = 7,
     PAGE_LOAD = 8,
     PAGE_UNLOAD = 9,
-    SESSION_START = 10
+    SESSION_START = 10,
+    EXTERNAL_LINK_CLICK = 11,
 }
 
 @Entity()

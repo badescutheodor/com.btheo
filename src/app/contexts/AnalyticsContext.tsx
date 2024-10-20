@@ -8,23 +8,10 @@ import React, {
   useRef,
 } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { y, flushQueue } from "../../lib/utils-client";
-
-enum EventType {
-  PAGE_VIEW = 1,
-  CLICK = 2,
-  SCROLL = 3,
-  FORM_SUBMISSION = 4,
-  CUSTOM_EVENT = 5,
-  ERROR = 6,
-  CONVERSION = 7,
-  PAGE_LOAD = 8,
-  PAGE_UNLOAD = 9,
-  SESSION_START = 10,
-}
+import { y, flushQueue, AnalyticType } from "../../lib/utils-client";
 
 interface AnalyticsContextType {
-  y: (type: any, data?: object) => Promise<void>;
+  y: (type: string | number, data?: object) => Promise<void>;
 }
 
 const AnalyticsContext = createContext<AnalyticsContextType | undefined>(
@@ -116,10 +103,7 @@ export const AnalyticsProvider: React.FC<AnalyticsProviderProps> = ({
   const trackEvent = useCallback(
     async (type: string | number, data?: object) => {
       try {
-        await y({
-          type,
-          data,
-        });
+        await y(type, data);
       } catch (error) {
         console.error("Failed to track event:", error);
       }
@@ -129,21 +113,20 @@ export const AnalyticsProvider: React.FC<AnalyticsProviderProps> = ({
 
   const trackSessionStart = useCallback(() => {
     if (!hasTrackedSessionStart.current) {
-      trackEvent(EventType.SESSION_START);
+      trackEvent(AnalyticType.SESSION_START);
       hasTrackedSessionStart.current = true;
     }
   }, [trackEvent]);
 
   const trackPageLoad = useCallback(() => {
     if (!hasTrackedPageLoad.current) {
-      trackEvent(EventType.PAGE_LOAD);
+      trackEvent(AnalyticType.PAGE_LOAD);
       hasTrackedPageLoad.current = true;
     }
   }, [trackEvent]);
 
   const trackPageView = useCallback(() => {
-    trackEvent(EventType.PAGE_VIEW, {
-      url: window.location.href,
+    trackEvent(AnalyticType.PAGE_VIEW, {
       pathname: pathname,
       params: searchParams,
     });
@@ -152,12 +135,34 @@ export const AnalyticsProvider: React.FC<AnalyticsProviderProps> = ({
   const setupClickTracking = useCallback(() => {
     const handleClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
-      trackEvent(EventType.CLICK, {
-        elementType: target.tagName,
-        elementId: target.id,
-        elementClasses: Array.from(target.classList).join(", "),
-      });
+      const closestLink = target.closest("a");
+
+      if (closestLink) {
+        const href = closestLink.getAttribute("href");
+        if (href) {
+          const isExternal =
+            href.startsWith("http") && !href.includes(window.location.hostname);
+
+          if (isExternal) {
+            trackEvent(AnalyticType.EXTERNAL_LINK_CLICK, {
+              url: href,
+              elementType: closestLink.tagName,
+              linkText: closestLink.textContent,
+            });
+          } else {
+            trackEvent(AnalyticType.CLICK, {
+              linkText: closestLink.textContent,
+            });
+          }
+        }
+      } else {
+        trackEvent(AnalyticType.CLICK, {
+          elementType: target.tagName,
+          coords: { x: e.clientX, y: e.clientY },
+        });
+      }
     };
+
     window.addEventListener("click", handleClick);
     return () => window.removeEventListener("click", handleClick);
   }, [trackEvent]);
@@ -167,8 +172,8 @@ export const AnalyticsProvider: React.FC<AnalyticsProviderProps> = ({
     const handleScroll = () => {
       const scrollPosition = window.scrollY;
       if (Math.abs(scrollPosition - lastScrollPosition) > 300) {
-        // Track every 100px of scroll
-        trackEvent(EventType.SCROLL, {
+        // Track every 300px of scroll
+        trackEvent(AnalyticType.SCROLL, {
           scrollPosition,
         });
         lastScrollPosition = scrollPosition;
@@ -181,7 +186,7 @@ export const AnalyticsProvider: React.FC<AnalyticsProviderProps> = ({
   const setupFormSubmissionTracking = useCallback(() => {
     const handleSubmit = (e: Event) => {
       const form = e.target as HTMLFormElement;
-      trackEvent(EventType.FORM_SUBMISSION, {
+      trackEvent(AnalyticType.FORM_SUBMISSION, {
         formId: form.id,
         formAction: form.action,
       });
@@ -192,7 +197,7 @@ export const AnalyticsProvider: React.FC<AnalyticsProviderProps> = ({
 
   const setupErrorTracking = useCallback(() => {
     const handleError = (error: ErrorEvent) => {
-      trackEvent(EventType.ERROR, {
+      trackEvent(AnalyticType.ERROR, {
         message: error.message,
         filename: error.filename,
         lineno: error.lineno,
@@ -205,13 +210,16 @@ export const AnalyticsProvider: React.FC<AnalyticsProviderProps> = ({
 
   const setupPageUnloadTracking = useCallback(() => {
     const handleUnload = () => {
-      trackEvent(EventType.PAGE_UNLOAD, {});
+      trackEvent(AnalyticType.PAGE_UNLOAD, {});
     };
     window.addEventListener("beforeunload", handleUnload);
     return () => window.removeEventListener("beforeunload", handleUnload);
   }, [trackEvent]);
 
-  const cleanupEventListeners = () => {};
+  const cleanupEventListeners = () => {
+    // This function is called in the useEffect cleanup
+    // If you need to manually remove any event listeners, you can do it here
+  };
 
   return (
     <AnalyticsContext.Provider value={{ y: trackEvent }}>

@@ -62,7 +62,7 @@ export const confirm = ({
 
 const ANALYTICS_QUEUE_KEY = 'yQueue';
 
-enum AnalyticType {
+export enum AnalyticType {
   PAGE_VIEW = 1,
   CLICK = 2,
   SCROLL = 3,
@@ -72,7 +72,8 @@ enum AnalyticType {
   CONVERSION = 7,
   PAGE_LOAD = 8,
   PAGE_UNLOAD = 9,
-  SESSION_START = 10
+  SESSION_START = 10,
+  EXTERNAL_LINK_CLICK = 11,
 }
 
 function processEventType(eventType: AnalyticType | string): number {
