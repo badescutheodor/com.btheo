@@ -8,7 +8,12 @@ import React, {
   useRef,
 } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { y, flushQueue, AnalyticType } from "../../lib/utils-client";
+import {
+  y,
+  flushQueue,
+  AnalyticType,
+  getAnalyticsData,
+} from "../../lib/utils-client";
 
 interface AnalyticsContextType {
   y: (type: string | number, data?: object) => Promise<void>;
@@ -129,6 +134,7 @@ export const AnalyticsProvider: React.FC<AnalyticsProviderProps> = ({
     trackEvent(AnalyticType.PAGE_VIEW, {
       pathname: pathname,
       params: searchParams,
+      ...getAnalyticsData(),
     });
   }, [trackEvent, pathname, searchParams]);
 
