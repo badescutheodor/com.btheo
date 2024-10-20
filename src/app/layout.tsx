@@ -7,6 +7,7 @@ import { Inter, Poppins } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import BackgroundTransition from "./components/BodyTransition";
 import { SettingsProvider } from "./contexts/SettingsContext";
+import { AnalyticsProvider } from "./contexts/AnalyticsContext";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -37,7 +38,7 @@ export default async function RootLayout({
           <ThemeProvider>
             <Layout initialUser={user} initialSettings={settings}>
               <BackgroundTransition />
-              {children}
+              <AnalyticsProvider>{children}</AnalyticsProvider>
             </Layout>
           </ThemeProvider>
         </SettingsProvider>
