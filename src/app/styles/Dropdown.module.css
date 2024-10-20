@@ -1,6 +1,7 @@
 .dropdown {
   position: relative;
   font-size: var(--base-font-size);
+  float: right;
 }
 
 .dropdown a,
@@ -56,7 +57,7 @@
 }
 
 .dropdownItem {
-  padding: var(--spacing-xs) var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-sm);
   cursor: pointer;
   color: var(--text-darker) !important;
 }

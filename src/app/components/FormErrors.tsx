@@ -6,11 +6,10 @@ import cx from "classnames";
 
 type FormErrorsProps = {
   className?: string;
-  afterSubmit?: boolean;
   size?: string;
 };
 
-const FormErrors = ({ className, size, afterSubmit }: FormErrorsProps) => {
+const FormErrors = ({ className, size }: FormErrorsProps) => {
   const [open, setOpen] = useState(true);
   const { errors, isSubmitted, resetSubmissionState, serverValidationFailed } =
     useForm();

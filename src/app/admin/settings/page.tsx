@@ -9,6 +9,7 @@ import qs from "qs";
 import Input from "@/app/components/Input";
 import Table from "@/app/components/Table";
 import { debounce } from "@/lib/utils-client";
+import * as yup from "yup";
 
 // Types
 interface Setting {
@@ -56,6 +57,10 @@ const SettingsTable: React.FC<{
           key: "key",
           label: "Key",
           type: "text",
+          rules: [
+            yup.string().required("Key is required"),
+            yup.string().max(255, "Key is too long"),
+          ],
           sortable: true,
         },
         {
@@ -63,6 +68,10 @@ const SettingsTable: React.FC<{
           key: "value",
           label: "Value",
           editable: true,
+          rules: [
+            yup.string().required("Value is required"),
+            yup.string().max(255, "Value is too long"),
+          ],
           type(item: any) {
             if (item.key === "homeImage") {
               return "file";
@@ -175,6 +184,7 @@ const SettingsPage: React.FC = () => {
     } catch (error) {
       console.error("Failed to fetch settings:", error);
       setError("Failed to fetch settings. Please try again.");
+      setSettings(settings.filter((s) => s.id !== "new"));
     }
   };
 

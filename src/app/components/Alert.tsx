@@ -6,7 +6,7 @@ interface AlertProps {
   type?: "success" | "warning" | "error" | "default";
   onClose?: () => void;
   children: React.ReactNode[];
-  open: boolean;
+  open?: boolean;
 }
 
 export const Alert: React.FC<AlertProps> = ({
@@ -15,15 +15,17 @@ export const Alert: React.FC<AlertProps> = ({
   onClose,
   children,
 }) => {
-  const [isVisible, setIsVisible] = useState<boolean>(open);
+  const [isVisible, setIsVisible] = useState<boolean>(open || true);
 
   useEffect(() => {
-    setIsVisible(open);
+    setIsVisible(open || true);
   }, [open]);
 
   const handleClose = () => {
     if (onClose) {
       onClose();
+    } else {
+      setIsVisible(false);
     }
   };
 
@@ -32,11 +34,9 @@ export const Alert: React.FC<AlertProps> = ({
   return (
     <div className={`${styles.alert} ${styles[type || "default"]}`}>
       <span className={styles.message}>{children}</span>
-      {onClose && (
-        <button className={styles.closeButton} onClick={handleClose}>
-          <FiX />
-        </button>
-      )}
+      <button className={styles.closeButton} onClick={handleClose}>
+        <FiX />
+      </button>
     </div>
   );
 };

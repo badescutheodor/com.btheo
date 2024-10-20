@@ -25,6 +25,7 @@
 
 .actionDropdown ul li span {
   display: flex;
+  font-size: var(--medium-size);
 }
 
 .table td {

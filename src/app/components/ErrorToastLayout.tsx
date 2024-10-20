@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
 
-const ErrorToastLayout = ({ children }) => {
+const ErrorToastLayout = ({ children }: any) => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const handleFetchError = (event) => {
+    const handleFetchError = (event: any) => {
       if (event.reason instanceof Error) {
         setError(event.reason.message);
         setTimeout(() => setError(null), 5000); // Remove after 5 seconds

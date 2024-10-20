@@ -432,7 +432,7 @@ type SafeDotNotation<T> = {
   [K in keyof T]: T[K] extends object ? `${K & string}.${SafeDotNotation<T[K]>}` : K
 }[keyof T] | (string & {});
 
-interface QueryOptions<T> {
+export interface QueryOptions<T> {
   filters?: DeepPartial<T & { [key: string]: FilterOperators }>;
   sort?: string;
   page?: number;

@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useCallback, use } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useUser } from "@/app/contexts/UserContext";
 import dynamic from "next/dynamic";
 import MarkdownIt from "markdown-it";
@@ -18,14 +18,14 @@ import Switch from "@/app/components/Switch";
 import Label from "@/app/components/Label";
 import Accordion from "@/app/components/Accordion";
 import { debounce } from "@/lib/utils-client";
+import { useFileManagement } from "@/hooks/useFiles";
+import "react-markdown-editor-lite/lib/index.css";
+import Table from "@/app/components/Table";
+import { set } from "react-datepicker/dist/date_utils";
 
 const MdEditor = dynamic(() => import("react-markdown-editor-lite"), {
   ssr: false,
 });
-
-import "react-markdown-editor-lite/lib/index.css";
-import Table from "@/app/components/Table";
-import { set } from "react-datepicker/dist/date_utils";
 
 // Types
 interface Label {
@@ -57,8 +57,54 @@ interface BlogPost {
   };
 }
 
+const filePreviewPlugin = (md) => {
+  const defaultRender = md.renderer.rules.image;
+
+  md.renderer.rules.image = (tokens, idx, options, env, self) => {
+    const token = tokens[idx];
+    let src = token.attrs[token.attrIndex("src")][1];
+
+    src = decodeURIComponent(src);
+    const match = src.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
+
+    if (match) {
+      const [, fileType, url] = match;
+      return customRenderer(url, fileType);
+    }
+
+    // Default case: render as normal image
+    return defaultRender(tokens, idx, options, env, self);
+  };
+};
+
+// Update the customRenderer function to handle more file types
+const customRenderer = (url, fileType) => {
+  switch (fileType) {
+    case "application/pdf":
+      return `<iframe src="${url}" width="100%" height="500px"></iframe>`;
+    case "audio/mpeg":
+    case "audio/wav":
+    case "audio/ogg":
+      return `<audio controls><source src="${url}" type="${fileType}">Your browser does not support the audio element.</audio>`;
+    case "video/mp4":
+    case "video/webm":
+    case "video/ogg":
+      return `<video width="100%" height="auto" controls><source src="${url}" type="${fileType}">Your browser does not support the video tag.</video>`;
+    case "image/jpeg":
+    case "image/png":
+    case "image/gif":
+    case "image/svg+xml":
+      return `<img src="${url}" alt="Uploaded file" style="max-width: 100%; height: auto;" />`;
+    default:
+      return `<a href="${url}" target="_blank">Download ${fileType} file</a>`;
+  }
+};
+
 // Utility functions
 const mdParser = new MarkdownIt({
+  html: true,
+  linkify: true,
+  typographer: true,
   highlight: function (str, lang) {
     if (lang && hljs.getLanguage(lang)) {
       try {
@@ -67,7 +113,7 @@ const mdParser = new MarkdownIt({
     }
     return "";
   },
-});
+}).use(filePreviewPlugin);
 
 const calculateReadTime = (content: string): string => {
   const wordsPerMinute = 200;
@@ -77,12 +123,71 @@ const calculateReadTime = (content: string): string => {
   return `${readTime} min read`;
 };
 
-// BlogPostForm Component
+const generateExcerpt = (content: string, length: number = 200): string => {
+  content = content || "";
+  content = content.replace(/#{1,6}\s?/g, "");
+
+  // Remove emphasis (bold, italic)
+  content = content.replace(/(\*\*|__)(.*?)\1/g, "$2");
+  content = content.replace(/(\*|_)(.*?)\1/g, "$2");
+
+  // Remove links
+  content = content.replace(/\[([^\]]+)\]\([^\)]+\)/g, "$1");
+
+  // Remove images (both standard markdown and UUID-based references)
+  content = content.replace(/!\[([^\]]*)\]\([^\)]+\)/g, "");
+  content = content.replace(/!\[[^\]]*\]$/gm, "");
+  content = content.replace(
+    /[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}\.(jpeg|jpg|png|gif)/gi,
+    ""
+  );
+
+  // Remove code blocks
+  content = content.replace(/```[\s\S]*?```/g, "");
+  content = content.replace(/`([^`]+)`/g, "$1");
+
+  // Remove blockquotes
+  content = content.replace(/^\s*>\s?/gm, "");
+
+  // Remove horizontal rules
+  content = content.replace(/^(?:- *){3,}|(?:_ *){3,}|(?:\* *){3,}$/gm, "");
+
+  // Remove list markers
+  content = content.replace(/^[\*\-+]\s/gm, "");
+  content = content.replace(/^\d+\.\s/gm, "");
+
+  // Remove extra whitespace
+  content = content.replace(/\s+/g, " ");
+
+  // Trim and limit to specified length
+  content = content.trim().slice(0, length);
+
+  // Add ellipsis if content was truncated
+  if (content.length === length) {
+    content += "...";
+  }
+
+  return content;
+};
+
 const BlogPostForm: React.FC<{
   blogPost: Partial<BlogPost>;
   labels: { value: string; label: string }[];
   onSubmit: (values: any) => void;
-}> = ({ blogPost, labels, onSubmit }) => {
+  onFileUpload: (file: File, callback: (url: string) => void) => void;
+}> = ({ blogPost, labels, onSubmit, onFileUpload }) => {
+  const [isDragging, setIsDragging] = useState(false);
+
+  const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+  }, []);
+
   return (
     <FormProvider
       onSubmit={onSubmit}
@@ -99,7 +204,25 @@ const BlogPostForm: React.FC<{
       {({ values, submitForm, setFieldValue }) => (
         <div className="row editor-row">
           <div className="col-lg-8">
-            <div className="h-full">
+            <div
+              className="h-full"
+              onDrop={(e) => {
+                e.preventDefault();
+                setIsDragging(false);
+                const files = Array.from(e.dataTransfer.files);
+                // files.forEach((file) => {
+                //   onFileUpload(file).then((encodedUrl) => {
+                //     const placeholder = `![](${encodedUrl})`;
+                //     setFieldValue(
+                //       "content",
+                //       values.content + "\n " + placeholder
+                //     );
+                //   });
+                // });
+              }}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+            >
               <MdEditor
                 style={{
                   height: "100%",
@@ -107,9 +230,19 @@ const BlogPostForm: React.FC<{
                   marginBottom: 30,
                 }}
                 autoFocus
-                renderHTML={(text) => mdParser.render(text)}
-                onChange={(value) => setFieldValue("content", value.text)}
+                onChange={({ text }) => {
+                  setFieldValue("content", text);
+                }}
                 value={values.content}
+                renderHTML={(text) => mdParser.render(text)}
+                config={{
+                  imageAccept: ".jpg,.jpeg,.png,.gif,.pdf,audio/*,video/*",
+                }}
+                onImageUpload={(file, callback) => {
+                  onFileUpload(file).then((encodedUrl) => {
+                    callback(encodedUrl);
+                  });
+                }}
               />
             </div>
           </div>
@@ -363,6 +496,8 @@ const BlogPostsPage: React.FC = () => {
   });
   const [error, setError] = useState<string | null>(null);
   const [params, setParams] = useState({});
+  const [pendingFiles, setPendingFiles] = useState<{ [key: string]: File }>({});
+  const { uploadFile } = useFileManagement();
 
   useEffect(() => {
     const params = qs.parse(window.location.search.slice(1));
@@ -419,9 +554,9 @@ const BlogPostsPage: React.FC = () => {
 
   const fetchLabels = async () => {
     try {
-      const response = await fetch("/api/labels");
+      const response = await fetch("/api/labels?limit=-1");
       if (response.ok) {
-        const data = await response.json();
+        const { data } = await response.json();
         setLabels(
           data.map((label: Label) => ({
             value: label.id,
@@ -437,63 +572,46 @@ const BlogPostsPage: React.FC = () => {
     }
   };
 
-  const handleBlogPost = async (values = {}) => {
-    try {
-      const readTime = calculateReadTime(values.content);
-      const response = await fetch("/api/posts", {
-        method: blogPost.id || values.id ? "PUT" : "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(
-          values.id
-            ? { ...values }
-            : {
-                ...blogPost,
-                ...values,
-                readTime,
-                content: values.content || "",
-                excerpt:
-                  values.excerpt ||
-                  (values.content || "").slice(0, 200) + "...",
-                status: values.status ? "published" : "draft",
-                date: values.date || new Date().toISOString().split("T")[0],
-                labels:
-                  values.labels?.map((label: any) => ({ id: label.value })) ||
-                  [],
-                metaTags: {
-                  ...blogPost.metaTags,
-                  ...values.metaTags,
-                  keywords:
-                    values.metaTags?.keywords?.map(
-                      (keyword) => keyword.value
-                    ) || [],
-                },
-              }
-        ),
-      });
+  const handleFileUpload = useCallback((file: File): Promise<string> => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const blobUrl = URL.createObjectURL(file);
+        setPendingFiles((prev) => ({
+          ...prev,
+          [blobUrl]: file,
+        }));
+        const fileType = file.type;
+        const encodedUrl = `[${fileType}](${blobUrl})`;
+        resolve(encodedUrl);
+      };
+      reader.readAsDataURL(file);
+    });
+  }, []);
 
-      if (response.ok) {
-        await fetchBlogPosts(params);
-        setBlogPost({
-          title: "",
-          content: "",
-          excerpt: "",
-          date: new Date().toISOString().split("T")[0],
-          readTime: "",
-          isFeatured: false,
-          labels: [],
-          metaTags: {},
+  const uploadPendingFiles = async (content: string): Promise<string> => {
+    let updatedContent = content;
+    for (const [blobUrl, file] of Object.entries(pendingFiles)) {
+      try {
+        const uploadedFile = await uploadFile(file, {
+          type: "blog-attachment",
         });
-        setShowModal(false);
-      } else {
-        const data = await response.json();
-        throw new Error(data.message || "Failed to update blog post");
+        const fileType = file.type;
+        const encodedBlobUrl = `\\[${fileType}\\]\\(${blobUrl.replace(
+          /[.*+?^${}()|[\]\\]/g,
+          "\\$&"
+        )}\\)`;
+        updatedContent = updatedContent.replace(
+          new RegExp(encodedBlobUrl, "g"),
+          `[${fileType}](${uploadedFile.path})`
+        );
+        URL.revokeObjectURL(blobUrl);
+      } catch (error) {
+        console.error("Failed to upload file:", error);
       }
-    } catch (error) {
-      console.error("Failed to update blog post:", error);
-      setError(
-        error.message || "Failed to update blog post. Please try again."
-      );
     }
+    setPendingFiles({});
+    return updatedContent;
   };
 
   const processPost = (post: any) => {
@@ -556,7 +674,65 @@ const BlogPostsPage: React.FC = () => {
     }
 
     debounce(fetchBlogPosts({ page: blogMeta.currentPage + 1 }, true), 500);
-  });
+  }, [blogMeta]);
+
+  const handleBlogPost = async (values = {}) => {
+    try {
+      const readTime = calculateReadTime(values.content);
+      const updatedContent = await uploadPendingFiles(values.content || "");
+      const response = await fetch("/api/posts", {
+        method: blogPost.id || values.id ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(
+          values.id
+            ? { ...values, content: updatedContent }
+            : {
+                ...blogPost,
+                ...values,
+                readTime,
+                content: updatedContent,
+                excerpt: values.excerpt || generateExcerpt(values.content),
+                status: values.status ? "published" : "draft",
+                date: values.date || new Date().toISOString().split("T")[0],
+                labels:
+                  values.labels?.map((label: any) => ({ id: label.value })) ||
+                  [],
+                metaTags: {
+                  ...blogPost.metaTags,
+                  ...values.metaTags,
+                  keywords:
+                    values.metaTags?.keywords?.map(
+                      (keyword) => keyword.value
+                    ) || [],
+                },
+              }
+        ),
+      });
+
+      if (response.ok) {
+        await fetchBlogPosts(params);
+        setBlogPost({
+          title: "",
+          content: "",
+          excerpt: "",
+          date: new Date().toISOString().split("T")[0],
+          readTime: "",
+          isFeatured: false,
+          labels: [],
+          metaTags: {},
+        });
+        setShowModal(false);
+      } else {
+        const data = await response.json();
+        throw new Error(data.message || "Failed to update blog post");
+      }
+    } catch (error) {
+      console.error("Failed to update blog post:", error);
+      setError(
+        error.message || "Failed to update blog post. Please try again."
+      );
+    }
+  };
 
   return (
     <div>
@@ -571,6 +747,7 @@ const BlogPostsPage: React.FC = () => {
             blogPost={blogPost}
             labels={labels}
             onSubmit={handleBlogPost}
+            onFileUpload={handleFileUpload}
           />
         </div>
       </Modal>

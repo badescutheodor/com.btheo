@@ -1,17 +1,17 @@
 import { getDB } from '@/lib/db';
 import { GuestbookEntry } from '@/lib/entities/GuestbookEntry';
+import EntityValidator from './entities/EntityValidator';
 
 export const createGuestbook = async (data = {}) => {
     'use server';
     const db = await getDB();
     const guestbookRepository = db.getRepository(GuestbookEntry); 
-    data.createdAt = new Date();
 
     const entry = guestbookRepository.create(data);
-    const errors = await GuestbookEntry.validate(entry);
+    const errors = await EntityValidator.validate(entry, GuestbookEntry);
 
-    if (Object.keys(errors).length > 0) {
-        return errors;
+    if (Object.keys(errors).length) {
+        return { errors };
     }
 
     guestbookRepository.save(entry);

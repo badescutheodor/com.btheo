@@ -29,16 +29,4 @@ export class Label {
 
   @ManyToMany(() => Snippet, (snippet) => snippet.labels)
   snippets: Snippet[];
-
-  static async validate(entryData: Partial<Label>): Promise<{ [key: string]: string[] }> {
-    const entry = plainToClass(Label, entryData);
-    const errors = await validate(entry);
-    
-    return errors.reduce((acc, error: ValidationError) => {
-      if (error.property && error.constraints) {
-        acc[error.property] = Object.values(error.constraints);
-      }
-      return acc;
-    }, {} as { [key: string]: string[] });
-} 
 }

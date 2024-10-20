@@ -6,6 +6,11 @@ import Pagination from "./Pagination";
 import Dropdown from "./Dropdown";
 import Button from "./Button";
 import Input from "./Input";
+import * as yup from "yup";
+
+type ValidationRule =
+  | yup.AnySchema
+  | ((value: unknown) => Promise<void> | void);
 
 type Field = {
   name: string;
@@ -16,6 +21,7 @@ type Field = {
   style?: React.CSSProperties;
   editable?: boolean;
   type?: string;
+  rules?: ValidationRule[];
 };
 
 const convertSorts = (sorts: string) => {
@@ -63,6 +69,12 @@ const Table: React.FC<TableProps> = ({
     itemId: string | number;
     fieldKey: string;
   } | null>(null);
+  const [errors, setErrors] = useState<Record<string, Record<string, string>>>(
+    {}
+  );
+  const [touchedFields, setTouchedFields] = useState<
+    Record<string, Record<string, boolean>>
+  >({});
 
   useEffect(() => {
     setCurrentData(data);
@@ -107,6 +119,43 @@ const Table: React.FC<TableProps> = ({
     [isMobile, onLoadMore]
   );
 
+  const validateField = async (item: any, field: Field, value: any) => {
+    if (!field.rules) return true;
+
+    try {
+      for (const rule of field.rules) {
+        if (typeof rule === "function") {
+          await rule(value);
+        } else {
+          await rule.validate(value);
+        }
+      }
+      setErrors((prevErrors) => {
+        const newErrors = { ...prevErrors };
+        if (newErrors[item.id]) {
+          delete newErrors[item.id][field.key];
+          if (Object.keys(newErrors[item.id]).length === 0) {
+            delete newErrors[item.id];
+          }
+        }
+        return newErrors;
+      });
+      return true;
+    } catch (error) {
+      setErrors((prevErrors) => ({
+        ...prevErrors,
+        [item.id]: {
+          ...prevErrors[item.id],
+          [field.key]:
+            error instanceof yup.ValidationError
+              ? error.message
+              : "Validation failed",
+        },
+      }));
+      return false;
+    }
+  };
+
   const toggleEdit = (item: any, field: Field) => {
     if (!field.editable && item.id !== "new") {
       return;
@@ -123,25 +172,41 @@ const Table: React.FC<TableProps> = ({
     }
   };
 
-  const saveEdit = (item: any, field: Field, value: any) => {
+  const saveEdit = async (item: any, field: Field, value: any) => {
     if ((!field.editable || field.type === "date") && item.id !== "new") {
       return;
     }
 
-    const oldValue = data.find((dataItem: any) => dataItem.id === item.id)[
-      field.key
-    ];
+    // Mark the field as touched
+    setTouchedFields((prevTouched) => ({
+      ...prevTouched,
+      [item.id]: {
+        ...prevTouched[item.id],
+        [field.key]: true,
+      },
+    }));
 
-    if (oldValue !== value) {
-      updateEntry && updateEntry({ ...item, [field.key]: value });
-    }
+    const isValid = await validateField(item, field, value);
+    if (!isValid) return;
 
+    const updatedItem = { ...item, [field.key]: value };
+    const newData = currentData.map((dataItem) =>
+      dataItem.id === item.id ? updatedItem : dataItem
+    );
+
+    setCurrentData(newData);
     setEditingCell(null);
+
+    // Only call updateEntry if all fields are valid
+    const itemErrors = errors[item.id] || {};
+    if (Object.keys(itemErrors).length === 0) {
+      updateEntry && updateEntry(updatedItem);
+    }
   };
 
   const onEditChange = (item: any, field: Field, value: any) => {
     const newData = currentData.map((dataItem) => {
-      if (dataItem.id === item.id && value !== "") {
+      if (dataItem.id === item.id) {
         return {
           ...dataItem,
           [field.key]: value,
@@ -151,16 +216,8 @@ const Table: React.FC<TableProps> = ({
     });
 
     setCurrentData(newData);
-
     if (field.type === "date") {
-      saveEdit(
-        item,
-        {
-          ...field,
-          type: "text",
-        },
-        value
-      );
+      saveEdit(item, { ...field, type: "text" }, value);
     }
   };
 
@@ -203,7 +260,7 @@ const Table: React.FC<TableProps> = ({
             <tbody>
               {currentData.map((item: any, key: number) => (
                 <tr key={`${key}`}>
-                  {fields.map((field) => (
+                  {fields.map((field, fieldIndex) => (
                     <td
                       key={field.key}
                       data-label={field.label}
@@ -236,34 +293,16 @@ const Table: React.FC<TableProps> = ({
                               : item[field.key]}
                           </div>
                         )}
-                      {editingCell &&
+                      {(editingCell &&
                         editingCell.itemId === item.id &&
-                        editingCell.fieldKey === field.key && (
-                          <Input
-                            value={item[field.key]}
-                            name={field.key}
-                            style={{ marginBottom: 0 }}
-                            className={styles.input}
-                            autoFocus
-                            type={
-                              (typeof field.type === "function"
-                                ? field.type(item)
-                                : field.type) || "text"
-                            }
-                            onBlur={() => {
-                              saveEdit(item, field, item[field.key]);
-                            }}
-                            onChange={(value) => {
-                              onEditChange(item, field, value);
-                            }}
-                          />
-                        )}
-                      {item.id === "new" && field.key !== "id" && (
+                        editingCell.fieldKey === field.key) ||
+                      (item.id === "new" && field.key !== "id") ? (
                         <Input
                           value={item[field.key]}
                           name={field.key}
-                          className={styles.input}
                           style={{ marginBottom: 0 }}
+                          className={styles.input}
+                          autoFocus={item.id === "new" && fieldIndex === 1}
                           type={
                             (typeof field.type === "function"
                               ? field.type(item)
@@ -275,8 +314,13 @@ const Table: React.FC<TableProps> = ({
                           onChange={(value) => {
                             onEditChange(item, field, value);
                           }}
+                          error={
+                            touchedFields[item.id]?.[field.key]
+                              ? errors[item.id]?.[field.key]
+                              : undefined
+                          }
                         />
-                      )}
+                      ) : null}
                     </td>
                   ))}
                   {actions.length > 0 && (

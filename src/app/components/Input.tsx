@@ -88,6 +88,7 @@ interface InputProps {
   isMulti?: boolean;
   isClearable?: boolean;
   isSearchable?: boolean;
+  readOnly?: boolean;
   style?: React.CSSProperties;
 }
 
@@ -107,6 +108,7 @@ const Input: React.FC<InputProps> = React.memo(
     autoScaleHeight,
     disabled,
     withClear,
+    readOnly,
     className,
     multiple,
     accept,
@@ -145,7 +147,7 @@ const Input: React.FC<InputProps> = React.memo(
 
     const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-    const isControlled = propValue !== undefined && propOnChange !== undefined;
+    const isControlled = propValue !== undefined || propOnChange !== undefined;
 
     const value = getValue(name, isControlled, propValue, formContext);
     const error = isControlled ? propError : formContext?.errors[name];
@@ -317,6 +319,7 @@ const Input: React.FC<InputProps> = React.memo(
           className ? className + "-input" : ""
         }`,
         autoFocus,
+        readOnly,
       };
 
       switch (type) {

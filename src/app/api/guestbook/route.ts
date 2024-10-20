@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { getDB } from '@/lib/db';
 import { GuestbookEntry } from '@/lib/entities/GuestbookEntry';
+import EntityValidator from '@/lib/entities/EntityValidator';
+import { QueryHandler, QueryOptions } from '@/lib/utils-server';
 
 async function getLocationFromIP(ip: string): Promise<string | undefined> {
   try {
@@ -18,13 +20,26 @@ async function getLocationFromIP(ip: string): Promise<string | undefined> {
 
 export async function GET(req: NextRequest) {
   try {
+    const user = await getSession(req);
     const db = await getDB();
-    const guestbookRepository = db.getRepository(GuestbookEntry);
-    const entries = await guestbookRepository.find({
-      order: { createdAt: 'DESC' },
-    });
+    const url = new URL(req.url);
 
-    return NextResponse.json(entries);
+    if (!user) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    }
+
+    const guestbookRepository = db.getRepository(GuestbookEntry);
+    const queryHandler = new QueryHandler<GuestbookEntry>(guestbookRepository);
+    const options = {
+      sort: url.searchParams.get('sort') || 'createdAt:desc',
+      page: parseInt(url.searchParams.get('page') || '1'),
+      limit: parseInt(url.searchParams.get('limit') || '10'),
+      searchFields: ['name', 'email', 'message', 'location', 'ipAddress', 'userAgent', 'website'],
+      search: url.searchParams.get('search'),
+    }
+
+    const result = await queryHandler.filterMulti(options, [], user?.role);
+    return NextResponse.json(result);
   } catch (error) {
     return NextResponse.json({ message: 'Error fetching guestbook entries' }, { status: 500 });
   }
@@ -32,10 +47,15 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const user = await getSession(req);
     const reqBody = await req.json();
     const { name, email, message, website } = reqBody;
 
-    const errors = await GuestbookEntry.validate(reqBody);
+    if (!user) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    }
+
+    const errors = await EntityValidator.validate(reqBody, GuestbookEntry);
     
     if (Object.keys(errors).length) {
       return NextResponse.json({ errors }, { status: 400 });
@@ -74,20 +94,16 @@ export async function PUT(req: NextRequest) {
     const reqBody = await req.json();
     const { id, ...others } = reqBody;
 
-    let entry = await guestbookRepository.findOne({ where: { id } }) || {};
+    let entry = await guestbookRepository.findOne({ where: { id } });
 
     if (!entry) {
       return NextResponse.json({ message: 'Guestbook entry not found' }, { status: 404 });
     }
 
-    entry = {
-      ...entry,
-      ...others
-    }
-
-    const errors = await GuestbookEntry.validate(entry);
+    entry = guestbookRepository.merge(entry, others);
+    const errors = await EntityValidator.validate(entry, GuestbookEntry);
     
-    if (errors.length > 0) {
+    if (Object.keys(errors).length) {
       return NextResponse.json({ errors }, { status: 400 });
     }
 
