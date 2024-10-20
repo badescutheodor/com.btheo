@@ -8,3 +8,6 @@ export * from "./GuestbookEntry";
 export * from "./Setting";
 export * from "./Analytic";
 export * from "./RawAnalytic";
+export * from "./JobStatus";
+export * from "./JobLock";
+export * from "./Ip2Location";

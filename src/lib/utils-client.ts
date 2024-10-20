@@ -96,7 +96,6 @@ interface AnalyticsData {
   touchPoints: number;
   geolocation: GeolocationInfo | null;
   plugins: string[];
-  fonts: string[];
   canvas: string;
   webGL: WebGLInfo | null;
   audio: AudioInfo | null;
@@ -236,17 +235,50 @@ export const getAnalyticsData = (): AnalyticsData => {
   };
 
   // Get WebGL info
-  const getWebGLInfo = (): WebGLInfo | null => {
+  function getWebGLInfo(): { vendor: string; renderer: string } | null {
     const canvas = document.createElement('canvas');
-    const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-    if (!gl) return null;
-
-    const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
-    return debugInfo ? {
-      vendor: gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL),
-      renderer: gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL)
-    } : null;
-  };
+    let gl: WebGLRenderingContext | null;
+  
+    try {
+      gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl') as WebGLRenderingContext | null;
+    } catch (e) {
+      return null;
+    }
+  
+    if (!gl) {
+      return null;
+    }
+  
+    let vendor: string | null = null;
+    let renderer: string | null = null;
+  
+    // Type assertion for debug info extension
+    const debugInfo = gl.getExtension('WEBGL_debug_renderer_info') as WEBGL_debug_renderer_info | null;
+  
+    if (debugInfo) {
+      try {
+        vendor = gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL) as string;
+        renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) as string;
+      } catch (e) {
+        // Some browsers might throw an error when accessing debug info
+      }
+    }
+  
+    // Fallback to standard parameters if debug info is not available
+    if (!vendor) vendor = gl.getParameter(gl.VENDOR) as string;
+    if (!renderer) renderer = gl.getParameter(gl.RENDERER) as string;
+  
+    return {
+      vendor: vendor || 'unknown',
+      renderer: renderer || 'unknown'
+    };
+  }
+  
+  // For TypeScript to recognize the WEBGL_debug_renderer_info interface
+  interface WEBGL_debug_renderer_info {
+    UNMASKED_VENDOR_WEBGL: number;
+    UNMASKED_RENDERER_WEBGL: number;
+  }
 
   // Get Audio info
   const getAudioInfo = (): AudioInfo | null => {
@@ -341,7 +373,7 @@ function getQueue() {
   return queueJson ? JSON.parse(queueJson) : [];
 }
 
-function saveQueue(queue) {
+function saveQueue(queue: string) {
   localStorage.setItem(ANALYTICS_QUEUE_KEY, JSON.stringify(queue));
 }
 
@@ -401,12 +433,12 @@ export async function y(type: string | number, data?: Record<string, unknown>) {
       try {
         throw "X";
           const registration = await navigator.serviceWorker.ready;
-          if (registration.sync) {
+          if (registration.active) {
               // Add to queue and request background sync
               const queue = getQueue();
               queue.push(encryptData(processedEvent));
               saveQueue(queue);
-              await registration.sync.register('analytics-sync');
+              await (registration as any).sync.register('analytics-sync');
               return;
           }
       } catch (error) {

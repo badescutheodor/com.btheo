@@ -5,7 +5,7 @@ export class JobStatus {
   @PrimaryColumn()
   type: string;
 
-  @Column({ type: 'timestamp' })
+  @Column({ type: 'datetime' })
   lastProcessedDate: Date;
 
   @CreateDateColumn()

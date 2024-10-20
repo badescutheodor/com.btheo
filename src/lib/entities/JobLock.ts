@@ -5,6 +5,6 @@ export class JobLock {
   @PrimaryColumn()
   jobType: string;
 
-  @Column({ type: 'timestamp' })
+  @Column({ type: 'datetime' })
   lockedUntil: Date;
 }

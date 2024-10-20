@@ -3,13 +3,11 @@ import { DataSource, DataSourceOptions } from "typeorm";
 import * as Entities from './entities';
 import path from 'path';
 
-const isDevelopment = process.env.NODE_ENV === 'development';
-
 const options: DataSourceOptions = {
   type: "sqlite",
   database: path.join(process.cwd(), 'db.sqlite'),
   entities: Object.values(Entities),
-  synchronize: isDevelopment,
+  synchronize: true,
   logging: false,
 };
 

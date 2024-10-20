@@ -1,7 +1,7 @@
 import { createServer } from 'http'
 import { parse } from 'url'
 import next from 'next'
-import { setupJobs } from '@/lib/jobs'
+import { initializeAnalytics } from './src/lib/jobs'
 
 const dev = process.env.NODE_ENV !== 'production'
 const app = next({ dev })
@@ -15,7 +15,7 @@ async function startServer() {
       const parsedUrl = parse(req.url!, true)
       handle(req, res, parsedUrl)
     }).listen(3000, () => {
-      setupJobs();
+      initializeAnalytics();
       console.log('> Ready on http://localhost:3000')
     })
   } catch (e) {

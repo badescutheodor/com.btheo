@@ -1,13 +1,13 @@
-import { AppDataSource } from "../lib/db";
 import { User } from "../lib/entities/User";
 import { Setting } from "../lib/entities/Setting";
 import { hash } from "bcryptjs";
+import { getDB } from "../lib/db";
 
 async function initDb() {
-  await AppDataSource.initialize();
+  const db = await getDB();
   
-  const userRepository = AppDataSource.getRepository(User);
-  const settingRepository = AppDataSource.getRepository(Setting);
+  const userRepository = db.getRepository(User);
+  const settingRepository = db.getRepository(Setting);
 
   // Create admin user if not exists
   const adminUser = await userRepository.findOne({ where: { email: "theo@btheo.com" } });
@@ -51,8 +51,6 @@ async function initDb() {
       console.log(`Setting '${setting.key}' already exists`);
     }
   }
-
-  await AppDataSource.destroy();
 }
 
 initDb().catch(console.error);

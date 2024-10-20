@@ -1,8 +1,39 @@
 import cron from 'node-cron';
-import { getDB } from '../db';
-import { Analytic, RawAnalytic, JobStatus, JobLock } from '../entities';
+import { getDB } from '../lib/db';
+import { Analytic, RawAnalytic, JobStatus, JobLock } from '../lib/entities';
 import moment from 'moment';
-import { AnalyticType } from '../utils-client';
+import { QueryRunner } from 'typeorm';
+
+enum AnalyticType {
+  PAGE_VIEW = 1,
+  CLICK = 2,
+  SCROLL = 3,
+  FORM_SUBMISSION = 4,
+  CUSTOM_EVENT = 5,
+  ERROR = 6,
+  CONVERSION = 7,
+  PAGE_LOAD = 8,
+  PAGE_UNLOAD = 9,
+  SESSION_START = 10,
+  EXTERNAL_LINK_CLICK = 11,
+}
+
+interface DailyAggregationResult {
+  totalVisits: string;
+  uniqueVisitors: string;
+  averagePageLoadTime: string;
+  topBrowsers: string;
+  topReferrers: string;
+  topOperatingSystems: string;
+  topLanguages: string;
+  deviceTypes: string;
+}
+
+interface ErrorCountRow {
+  timeSlot: string;
+  errorMessage: string;
+  errorCount: string;
+}
 
 interface AnalyticJob {
   type: string;
@@ -11,74 +42,99 @@ interface AnalyticJob {
   processResult: (result: any, date: string) => any;
 }
 
-const getDateRange = (date: moment.Moment) => {
-  const start = date.clone().startOf('day');
-  const end = date.clone().add(1, 'day').startOf('day');
-  return { start, end };
+const linearRegression = (timeSeries: any[], valueKey: string) => {
+  const xValues = timeSeries.map((_, i) => i);
+  const yValues = timeSeries.map(item => item[valueKey]);
+
+  const n = xValues.length;
+  const sumX = xValues.reduce((a, b) => a + b, 0);
+  const sumY = yValues.reduce((a, b) => a + b, 0);
+  const sumXY = xValues.reduce((a, b, i) => a + b * yValues[i], 0);
+  const sumXX = xValues.reduce((a, b) => a + b * b, 0);
+
+  const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+  const intercept = (sumY - slope * sumX) / n;
+
+  return { slope, intercept };
 };
 
-const acquireLock = async (jobType: string, duration: number): Promise<boolean> => {
-  const db = await getDB();
-  const jobLockRepo = db.getRepository(JobLock);
+const calculatePredictedValues = (timeSeries: any[], valueKey: string) => {
+  if (timeSeries.length < 2) return [];
 
+  const { slope, intercept } = linearRegression(timeSeries, valueKey);
+  const lastDate = moment(timeSeries[timeSeries.length - 1].time);
+
+  return Array.from({ length: 7 }, (_, i) => ({
+    time: lastDate.clone().add(i + 1, 'days').toISOString(),
+    [valueKey]: Math.max(0, Math.round(slope * (timeSeries.length + i) + intercept))
+  }));
+};
+
+const getDateRange = (date: moment.Moment) => ({
+  start: date.clone().startOf('day'),
+  end: date.clone().add(1, 'day').startOf('day')
+});
+
+const acquireLock = async (queryRunner: QueryRunner, jobType: string, duration: number): Promise<boolean> => {
   const now = new Date();
   const lockExpiration = new Date(now.getTime() + duration);
 
   try {
-    await jobLockRepo.insert({
+    await queryRunner.manager.insert(JobLock, {
       jobType,
       lockedUntil: lockExpiration,
     });
     return true;
-  } catch (error) {
-    // If insert fails due to unique constraint, the lock is already held
-    if (error.code === '23505') { // PostgreSQL unique violation error code
-      return false;
-    }
+  } catch (error: any) {
+    if (error.code === '23505') return false; // PostgreSQL unique violation error code
     throw error;
   }
 };
 
-const releaseLock = async (jobType: string): Promise<void> => {
-  const db = await getDB();
-  const jobLockRepo = db.getRepository(JobLock);
-  await jobLockRepo.delete({ jobType });
+const releaseLock = async (queryRunner: QueryRunner, jobType: string): Promise<void> => {
+  await queryRunner.manager.delete(JobLock, { jobType });
 };
 
-const runWithLock = async (jobType: string, duration: number, job: () => Promise<void>): Promise<void> => {
-  if (await acquireLock(jobType, duration)) {
-    try {
-      await job();
-    } finally {
-      await releaseLock(jobType);
+const runWithLock = async (jobType: string, duration: number, job: (queryRunner: QueryRunner) => Promise<void>): Promise<void> => {
+  const db = await getDB();
+  const queryRunner = db.createQueryRunner();
+
+  await queryRunner.connect();
+  await queryRunner.startTransaction();
+
+  try {
+    if (await acquireLock(queryRunner, jobType, duration)) {
+      await job(queryRunner);
+      await queryRunner.commitTransaction();
+    } else {
+      console.log(`Job ${jobType} is already running on another instance.`);
+      await queryRunner.rollbackTransaction();
     }
-  } else {
-    console.log(`Job ${jobType} is already running on another instance.`);
+  } catch (error) {
+    await queryRunner.rollbackTransaction();
+    throw error;
+  } finally {
+    await releaseLock(queryRunner, jobType);
+    await queryRunner.release();
   }
 };
 
 const runAnalyticJob = async (job: AnalyticJob, date: moment.Moment) => {
-  await runWithLock(job.type, 30 * 60 * 1000, async () => {
-    const db = await getDB();
-    const rawAnalyticRepo = db.getRepository(RawAnalytic);
-    const analyticRepo = db.getRepository(Analytic);
-    const jobStatusRepo = db.getRepository(JobStatus);
+  await runWithLock(job.type, 30 * 60 * 1000, async (queryRunner) => {
     const { start, end } = getDateRange(date);
 
-    const result = await rawAnalyticRepo.query(job.query, {
+    const result = await queryRunner.manager.query(job.query, [{
       ...job.params,
       start: start.toDate(),
       end: end.toDate(),
-    });
+    }]);
 
     const newAnalytic = new Analytic();
     newAnalytic.type = job.type;
     newAnalytic.data = job.processResult(result, date.format('YYYY-MM-DD'));
 
-    await analyticRepo.save(newAnalytic);
-
-    // Update job status
-    await jobStatusRepo.update({ type: job.type }, { lastProcessedDate: end.toDate() }, { upsert: true });
+    await queryRunner.manager.save(Analytic, newAnalytic);
+    await queryRunner.manager.update(JobStatus, { type: job.type }, { lastProcessedDate: end.toDate() });
 
     console.log(`${job.type} completed for ${date.format('YYYY-MM-DD')}`);
   });
@@ -93,10 +149,18 @@ const analyticJobs: AnalyticJob[] = [
       WHERE createdAt >= :start AND createdAt < :end
     `,
     params: {},
-    processResult: (result, date) => ({
-      date,
-      count: result[0].count,
-    }),
+    processResult: (result, date) => {
+      const timeSeries = result.map((row: any) => ({
+        time: row.timeSlot,
+        count: parseInt(row.count)
+      }));
+      return {
+        date,
+        count: timeSeries[timeSeries.length - 1].count,
+        timeSeries,
+        predictedValues: calculatePredictedValues(timeSeries, 'count')
+      };
+    },
   },
   {
     type: 'DAILY_CONVERSIONS',
@@ -106,57 +170,75 @@ const analyticJobs: AnalyticJob[] = [
       WHERE type = :type AND createdAt >= :start AND createdAt < :end
     `,
     params: { type: AnalyticType.CONVERSION },
-    processResult: (result, date) => ({
-      date,
-      count: result[0].count,
-    }),
+    processResult: (result, date) => {
+      const timeSeries = result.map((row: any) => ({
+        time: row.timeSlot,
+        count: parseInt(row.count)
+      }));
+      return {
+        date,
+        count: timeSeries[timeSeries.length - 1].count,
+        timeSeries,
+        predictedValues: calculatePredictedValues(timeSeries, 'count')
+      };
+    },
   },
   {
     type: 'CURRENT_ACTIVE_USERS',
     query: `
-      SELECT 
-        DATE_TRUNC('minute', createdAt) as timeSlot,
-        COUNT(DISTINCT sessionId) as activeUsers,
-        JSON_OBJECT_AGG(
-          country,
-          JSON_BUILD_OBJECT(
+      WITH time_slots AS (
+        SELECT 
+          datetime(createdAt, 'start of minute') as timeSlot
+        FROM raw_analytic
+        WHERE 
+          type = ? 
+          AND createdAt >= ? 
+          AND createdAt < ?
+        GROUP BY datetime(createdAt, 'start of minute')
+      ),
+      session_counts AS (
+        SELECT 
+          datetime(createdAt, 'start of minute') as timeSlot,
+          COUNT(DISTINCT sessionId) as activeUsers,
+          GROUP_CONCAT(DISTINCT json_object(
+            'country', country,
             'count', COUNT(DISTINCT sessionId),
-            'devices', JSON_OBJECT_AGG(
-              data->>'deviceType',
-              COUNT(DISTINCT sessionId)
-            )
-          )
-        ) as countryData
-      FROM raw_analytic
-      CROSS JOIN LATERAL (
-        SELECT country 
-        FROM ip2location 
-        WHERE ip_from <= CAST(split_part(ipAddress, '.', 1) AS BIGINT) * 16777216 +
-                         CAST(split_part(ipAddress, '.', 2) AS BIGINT) * 65536 +
-                         CAST(split_part(ipAddress, '.', 3) AS BIGINT) * 256 +
-                         CAST(split_part(ipAddress, '.', 4) AS BIGINT)
-          AND ip_to >= CAST(split_part(ipAddress, '.', 1) AS BIGINT) * 16777216 +
-                        CAST(split_part(ipAddress, '.', 2) AS BIGINT) * 65536 +
-                        CAST(split_part(ipAddress, '.', 3) AS BIGINT) * 256 +
-                        CAST(split_part(ipAddress, '.', 4) AS BIGINT)
-        LIMIT 1
-      ) ip_lookup
-      WHERE 
-        type = :type 
-        AND createdAt >= :start 
-        AND createdAt < :end
-      GROUP BY timeSlot
-      ORDER BY timeSlot
+            'devices', json_object(json_extract(data, '$.deviceType'), COUNT(DISTINCT sessionId))
+          )) as countryData
+        FROM raw_analytic
+        LEFT JOIN ip2location ON 
+          (CAST(substr(ipAddress, 1, instr(ipAddress, '.')-1) AS INTEGER) * 16777216 +
+           CAST(substr(substr(ipAddress, instr(ipAddress, '.')+1), 1, instr(substr(ipAddress, instr(ipAddress, '.')+1), '.')-1) AS INTEGER) * 65536 +
+           CAST(substr(substr(ipAddress, instr(ipAddress, '.', instr(ipAddress, '.')+1)+1), 1, instr(substr(ipAddress, instr(ipAddress, '.', instr(ipAddress, '.')+1)+1), '.')-1) AS INTEGER) * 256 +
+           CAST(substr(ipAddress, instr(ipAddress, '.', instr(ipAddress, '.', instr(ipAddress, '.')+1)+1)+1) AS INTEGER)) 
+          BETWEEN ip_from AND ip_to
+        WHERE 
+          type = ? 
+          AND createdAt >= ? 
+          AND createdAt < ?
+        GROUP BY datetime(createdAt, 'start of minute'), country
+      )
+      SELECT 
+        time_slots.timeSlot,
+        COALESCE(session_counts.activeUsers, 0) as activeUsers,
+        COALESCE(session_counts.countryData, '[]') as countryData
+      FROM time_slots
+      LEFT JOIN session_counts ON time_slots.timeSlot = session_counts.timeSlot
+      ORDER BY time_slots.timeSlot
     `,
     params: { type: AnalyticType.PAGE_VIEW },
-    processResult: (result, date) => ({
-      date,
-      timeSeries: result.map(row => ({
+    processResult: (result, date) => {
+      const timeSeries = result.map((row: any) => ({
         time: row.timeSlot,
-        activeUsers: parseInt(row.activeUsers),
-        countryData: JSON.parse(row.countryData)
-      }))
-    }),
+        activeUsers: row.activeUsers,
+        countryData: JSON.parse(`[${row.countryData}]`)
+      }));
+      return {
+        date,
+        timeSeries,
+        predictedValues: calculatePredictedValues(timeSeries, 'activeUsers')
+      };
+    },
   },
   {
     type: 'AVERAGE_LOADING_TIMES',
@@ -173,13 +255,17 @@ const analyticJobs: AnalyticJob[] = [
       ORDER BY timeSlot
     `,
     params: { type: AnalyticType.PAGE_LOAD },
-    processResult: (result, date) => ({
-      date,
-      timeSeries: result.map(row => ({
+    processResult: (result, date) => {
+      const timeSeries = result.map((row: any) => ({
         time: row.timeSlot,
         avgLoadTime: parseFloat(row.avgLoadTime)
-      }))
-    }),
+      }));
+      return {
+        date,
+        timeSeries,
+        predictedValues: calculatePredictedValues(timeSeries, 'avgLoadTime')
+      };
+    },
   },
   {
     type: 'ERROR_COUNT',
@@ -197,9 +283,8 @@ const analyticJobs: AnalyticJob[] = [
       ORDER BY timeSlot, errorCount DESC
     `,
     params: { type: AnalyticType.ERROR },
-    processResult: (result, date) => ({
-      date,
-      timeSeries: result.reduce((acc, row) => {
+    processResult: (result, date) => {
+      const timeSeries = result.reduce((acc: Record<string, any>, row: ErrorCountRow) => {
         const timeSlot = row.timeSlot;
         if (!acc[timeSlot]) {
           acc[timeSlot] = {
@@ -214,8 +299,14 @@ const analyticJobs: AnalyticJob[] = [
           count: parseInt(row.errorCount)
         });
         return acc;
-      }, {}),
-    }),
+      }, {});
+      const timeSeriesArray = Object.values(timeSeries);
+      return {
+        date,
+        timeSeries: timeSeriesArray,
+        predictedValues: calculatePredictedValues(timeSeriesArray, 'totalErrors')
+      };
+    },
   },
   {
     type: 'AVERAGE_SESSION_DURATION',
@@ -242,7 +333,7 @@ const analyticJobs: AnalyticJob[] = [
     params: {},
     processResult: (result, date) => ({
       date,
-      timeSeries: result.map(row => ({
+      timeSeries: result.map((row: any) => ({
         time: row.timeSlot,
         avgDuration: parseFloat(row.avgDuration)
       }))
@@ -251,11 +342,7 @@ const analyticJobs: AnalyticJob[] = [
 ];
 
 const aggregateDailyAnalytics = async (date: moment.Moment) => {
-  await runWithLock('DAILY_AGGREGATION', 60 * 60 * 1000, async () => {
-    const db = await getDB();
-    const rawAnalyticRepo = db.getRepository(RawAnalytic);
-    const analyticRepo = db.getRepository(Analytic);
-    const jobStatusRepo = db.getRepository(JobStatus);
+  await runWithLock('DAILY_AGGREGATION', 60 * 60 * 1000, async (queryRunner) => {
     const { start, end } = getDateRange(date);
 
     const aggregationQuery = `
@@ -289,72 +376,70 @@ const aggregateDailyAnalytics = async (date: moment.Moment) => {
       WHERE createdAt >= :start AND createdAt < :end
     `;
 
-    const result = await rawAnalyticRepo.query(aggregationQuery, {
-      start: start.toDate(),
-      end: end.toDate(),
-    });
+    const result = await queryRunner.manager.query(
+      aggregationQuery, 
+      [{
+        start: start.toDate(),
+        end: end.toDate()
+      }]
+    ) as DailyAggregationResult[];
+
+    if (result.length === 0) {
+      console.log(`No data found for ${date.format('YYYY-MM-DD')}`);
+      return;
+    }
+
+    const aggregatedData: any = result[0];
 
     const newAnalytic = new Analytic();
     newAnalytic.type = 'DAILY_AGGREGATION';
     newAnalytic.data = {
       date: date.format('YYYY-MM-DD'),
-      ...result[0],
-      topBrowsers: JSON.parse(result[0].topBrowsers),
-      topReferrers: JSON.parse(result[0].topReferrers),
-      topOperatingSystems: JSON.parse(result[0].topOperatingSystems),
-      topLanguages: JSON.parse(result[0].topLanguages),
-      deviceTypes: JSON.parse(result[0].deviceTypes),
+      totalVisits: parseInt(aggregatedData.totalVisits),
+      uniqueVisitors: parseInt(aggregatedData.uniqueVisitors),
+      averagePageLoadTime: parseFloat(aggregatedData.averagePageLoadTime),
+      topBrowsers: JSON.parse(aggregatedData.topBrowsers),
+      topReferrers: JSON.parse(aggregatedData.topReferrers),
+      topOperatingSystems: JSON.parse(aggregatedData.topOperatingSystems),
+      topLanguages: JSON.parse(aggregatedData.topLanguages),
+      deviceTypes: JSON.parse(aggregatedData.deviceTypes),
     };
 
-    await analyticRepo.save(newAnalytic);
-
-    // Update job status
-    await jobStatusRepo.update({ type: 'DAILY_AGGREGATION' }, { lastProcessedDate: end.toDate() }, { upsert: true });
+    await queryRunner.manager.save(Analytic, newAnalytic);
+    await queryRunner.manager.update(JobStatus, { type: 'DAILY_AGGREGATION' }, { lastProcessedDate: end.toDate() });
 
     console.log(`Daily analytics aggregation completed for ${date.format('YYYY-MM-DD')}`);
   });
 };
 
 const deleteOldRawData = async () => {
-  await runWithLock('DELETE_OLD_RAW_DATA', 2 * 60 * 60 * 1000, async () => {
-    const db = await getDB();
-    const rawAnalyticRepo = db.getRepository(RawAnalytic);
-    const jobStatusRepo = db.getRepository(JobStatus);
-
-    // Get the date 2 months ago
+  await runWithLock('DELETE_OLD_RAW_DATA', 2 * 60 * 60 * 1000, async (queryRunner) => {
     const twoMonthsAgo = moment().subtract(2, 'months').startOf('day');
 
-    // Delete old raw data
-    const deleteResult = await rawAnalyticRepo.createQueryBuilder()
+    const deleteResult = await queryRunner.manager.createQueryBuilder()
       .delete()
+      .from(RawAnalytic)
       .where("createdAt < :date", { date: twoMonthsAgo.toDate() })
       .execute();
 
     console.log(`Deleted ${deleteResult.affected} old raw analytic records.`);
 
-    // Update job status
-    await jobStatusRepo.update(
-      { type: 'DELETE_OLD_RAW_DATA' },
-      { lastProcessedDate: new Date() },
-      { upsert: true }
-    );
-  });
+    await queryRunner.manager.update(JobStatus, { type: 'DELETE_OLD_RAW_DATA' }, { lastProcessedDate: new Date() });
+});
 };
 
 const processMissingDays = async (job: AnalyticJob | typeof aggregateDailyAnalytics) => {
-  await runWithLock(`CATCH_UP_${job.type}`, 4 * 60 * 60 * 1000, async () => {
-    const db = await getDB();
-    const jobStatusRepo = db.getRepository(JobStatus);
-
-    const jobStatus = await jobStatusRepo.findOne({ where: { type: job.type } });
+  await runWithLock(`CATCH_UP_${typeof job === 'function' ? 'DAILY_AGGREGATION' : job.type}`, 4 * 60 * 60 * 1000, async (queryRunner) => {
+    const jobType = typeof job === 'function' ? 'DAILY_AGGREGATION' : job.type;
+    const jobStatus = await queryRunner.manager.findOne(JobStatus, { where: { type: jobType } });
     const lastProcessedDate = jobStatus ? moment(jobStatus.lastProcessedDate) : moment().subtract(30, 'days');
     const today = moment().startOf('day');
 
     let currentDate = lastProcessedDate.clone().add(1, 'day');
 
     while (currentDate.isSameOrBefore(today)) {
-      if (job === aggregateDailyAnalytics) {
-        await aggregateDailyAnalytics(currentDate);
+      if (typeof job === 'function') {
+        await job(currentDate);
       } else {
         await runAnalyticJob(job, currentDate);
       }
@@ -364,14 +449,14 @@ const processMissingDays = async (job: AnalyticJob | typeof aggregateDailyAnalyt
 };
 
 const runRealTimeAnalytics = async () => {
-    const now = moment();
-    const fiveMinutesAgo = now.clone().subtract(5, 'minutes');
+  const now = moment();
+  const fiveMinutesAgo = now.clone().subtract(5, 'minutes');
 
-    for (const job of analyticJobs) {
-        if (['CURRENT_ACTIVE_USERS', 'AVERAGE_LOADING_TIMES', 'ERROR_COUNT'].includes(job.type)) {
-            await runAnalyticJob(job, fiveMinutesAgo);
-        }
+  for (const job of analyticJobs) {
+    if (['CURRENT_ACTIVE_USERS', 'AVERAGE_LOADING_TIMES', 'ERROR_COUNT'].includes(job.type)) {
+      await runAnalyticJob(job, fiveMinutesAgo);
     }
+  }
 };
 
 const setupJobs = () => {
@@ -387,18 +472,11 @@ const setupJobs = () => {
     await aggregateDailyAnalytics(moment().subtract(1, 'day'));
   });
 
-  cron.schedule('0 2 1 * *', async () => {
-    console.log('Starting deletion of old raw data...');
-    await deleteOldRawData();
-    console.log('Finished deletion of old raw data.');
-  });
+  cron.schedule('0 2 1 * *', deleteOldRawData);
 
-  cron.schedule('*/5 * * * *', async () => {
-    await runRealTimeAnalytics();
-  });
+  cron.schedule('*/5 * * * *', runRealTimeAnalytics);
 };
 
-// Run catch-up on server start
 const runCatchUpOnStart = async () => {
   for (const job of analyticJobs) {
     await processMissingDays(job);
