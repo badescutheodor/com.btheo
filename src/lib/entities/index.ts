@@ -6,3 +6,5 @@ export * from "./Comment";
 export * from "./Upload";
 export * from "./GuestbookEntry";
 export * from "./Setting";
+export * from "./Analytic";
+export * from "./RawAnalytic";

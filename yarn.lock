@@ -2485,6 +2485,11 @@
   "resolved" "https://registry.npmjs.org/@types/bcryptjs/-/bcryptjs-2.4.6.tgz"
   "version" "2.4.6"
 
+"@types/crypto-js@^4.2.2":
+  "integrity" "sha512-sDOLlVbHhXpAUAL0YHDUUwDZf3iN4Bwi4W6a0W0b+QcAezUbRtH4FVb+9J4h+XFPW7l/gQ9F8qC7P+Ec4k8QVQ=="
+  "resolved" "https://registry.npmjs.org/@types/crypto-js/-/crypto-js-4.2.2.tgz"
+  "version" "4.2.2"
+
 "@types/estree@^1.0.5":
   "integrity" "sha512-AYnb1nQyY49te+VRAVgmzfcgjYS91mY5P0TKUDCLEM+gNnA+3T6rWITXRLYCpahpqSQbN5cE+gHpnPyXjHWxcw=="
   "resolved" "https://registry.npmjs.org/@types/estree/-/estree-1.0.6.tgz"
@@ -3438,6 +3443,11 @@
     "path-key" "^3.1.0"
     "shebang-command" "^2.0.0"
     "which" "^2.0.1"
+
+"crypto-js@^4.2.0":
+  "integrity" "sha512-KALDyEYgpY+Rlob/iriUtjV6d5Eq+Y191A5g4UqLAi8CyGP9N1+FdVbkc1SxKc2r4YAYqG8JzO2KGL+AizD70Q=="
+  "resolved" "https://registry.npmjs.org/crypto-js/-/crypto-js-4.2.0.tgz"
+  "version" "4.2.0"
 
 "csstype@^3.0.2":
   "integrity" "sha512-M1uQkMl8rQK/szD0LNhtqxIPLpimGm8sOBwU7lLnCpSbTyY3yeU1Vc7l4KT5zT4s/yOxHH5O7tIuuLOCnLADRw=="

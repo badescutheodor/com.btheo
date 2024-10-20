@@ -7,6 +7,14 @@ import EntityValidator from '@/lib/entities/EntityValidator';
 import { QueryHandler, QueryOptions } from '@/lib/utils-server';
 import { cookies } from "next/headers";
 import { v4 as uuidv4 } from 'uuid';
+import CryptoJS from 'crypto-js';
+
+const ENCRYPTION_KEY = process.env.NEXT_PUBLIC_ENCRYPTION_KEY || "";
+
+function decryptData(encryptedData: string): any {
+  const bytes = CryptoJS.AES.decrypt(encryptedData, ENCRYPTION_KEY);
+  return JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
+}
 
 export async function POST(req: NextRequest) {
     try {
@@ -17,10 +25,13 @@ export async function POST(req: NextRequest) {
       const db = await getDB();
       const rawAnalyticRepository = db.getRepository(RawAnalytic);
       const reqBody = await req.json();
-  
+
       // Check if the request is a batch insert
-      const analytics = Array.isArray(reqBody) ? reqBody : [reqBody];
-  
+      const analytics = Array.isArray(reqBody.data) 
+      ? reqBody.data.map((data: string) => decryptData(data)) : [
+        decryptData(reqBody.data)
+      ];
+
       const validatedAnalytics = [];
       const errors = [];
   
@@ -51,10 +62,10 @@ export async function POST(req: NextRequest) {
       }
   
       await rawAnalyticRepository.save(validatedAnalytics);
-      return NextResponse.json({ message: 'Analytic data stored successfully', count: validatedAnalytics.length }, { status: 201 });
+      return NextResponse.json({ ok: validatedAnalytics.length }, { status: 201 });
     } catch (error) {
       console.error(error);
-      return NextResponse.json({ message: 'Error storing analytic data' }, { status: 500 });
+      return NextResponse.json({ message: 'Error storing data' }, { status: 500 });
     }
   }
 

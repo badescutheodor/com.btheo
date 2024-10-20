@@ -1,6 +1,13 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import ConfirmationModal from "@/app/components/ConfirmationModal";
+import CryptoJS from 'crypto-js';
+
+const ENCRYPTION_KEY = process.env.NEXT_PUBLIC_ENCRYPTION_KEY || "";
+
+function encryptData(data: any): string {
+  return CryptoJS.AES.encrypt(JSON.stringify(data), ENCRYPTION_KEY).toString();
+}
 
 type DebouncedFunction<T extends (...args: any[]) => any> = (
   ...args: Parameters<T>
@@ -109,7 +116,7 @@ export async function flushQueue() {
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify(queue)
+      body: JSON.stringify({ data: queue })
     });
 
     if (response.ok) {
@@ -129,7 +136,7 @@ async function sendAnalytics(events: any[]): Promise<void> {
           headers: {
               'Content-Type': 'application/json'
           },
-          body: JSON.stringify(events)
+          body: JSON.stringify({ data: events })
       });
 
       if (!response.ok) {
@@ -153,11 +160,12 @@ export async function y(type: string | number, data?: Record<string, unknown>) {
   // Check if service worker and background sync are available
   if ('serviceWorker' in navigator && 'SyncManager' in window) {
       try {
+        throw "X";
           const registration = await navigator.serviceWorker.ready;
           if (registration.sync) {
               // Add to queue and request background sync
               const queue = getQueue();
-              queue.push(processedEvent);
+              queue.push(encryptData(processedEvent));
               saveQueue(queue);
               await registration.sync.register('analytics-sync');
               return;
@@ -168,5 +176,5 @@ export async function y(type: string | number, data?: Record<string, unknown>) {
   }
 
   // If we reach here, background sync is not available, so send directly
-  await sendAnalytics([processedEvent]);
+  await sendAnalytics([encryptData(processedEvent)]);
 }

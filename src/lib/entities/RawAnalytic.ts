@@ -22,7 +22,6 @@ export class RawAnalytic {
 
   @Column()
   @IsNotEmpty()
-  @IsString()
   type: AnalyticType;
 
   @Column("simple-json")
