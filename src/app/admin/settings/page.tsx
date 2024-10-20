@@ -10,6 +10,7 @@ import Input from "@/app/components/Input";
 import Table from "@/app/components/Table";
 import { debounce } from "@/lib/utils-client";
 import * as yup from "yup";
+import Alert from "@/app/components/Alert";
 
 // Types
 interface Setting {
@@ -198,7 +199,6 @@ const SettingsPage: React.FC = () => {
         delete values.id;
       }
 
-      console.log(values);
       if (values.key === "homeImage" && values.value[0]) {
         const file = values.value[0];
         const uploadedFile = await uploadFile(file, {
@@ -282,6 +282,15 @@ const SettingsPage: React.FC = () => {
 
   return (
     <div>
+      {error && (
+        <div className="row">
+          <div className="col-lg-12">
+            <div>
+              <Alert type="error">{error}</Alert>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="row">
         <div className="col-lg-2">
           <h3 className="m-0">Settings</h3>

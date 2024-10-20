@@ -90,7 +90,16 @@ const Header = ({ settings }: Settings) => {
               ]}
               onSelect={() => {}}
             >
-              {user.name}
+              {user.avatar && (
+                <img
+                  src={user.avatar}
+                  alt={user.name}
+                  width={30}
+                  height={30}
+                  className="circle mr-sm"
+                />
+              )}
+              {user.name.split(" ")[0]}
             </Dropdown>
           )}
           <div className={styles.themeToggle}>

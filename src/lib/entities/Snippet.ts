@@ -49,7 +49,6 @@ export class Snippet {
   @ManyToMany(() => Label, (label) => label.snippets)
   @JoinTable()
   @IsOptional()
-  @ArrayNotEmpty()
   @ValidateNested({ each: true })
   @Type(() => Label)
   labels: Label[];

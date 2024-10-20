@@ -90,6 +90,7 @@ interface InputProps {
   isSearchable?: boolean;
   readOnly?: boolean;
   style?: React.CSSProperties;
+  flat?: boolean;
 }
 
 const Input: React.FC<InputProps> = React.memo(
@@ -122,6 +123,7 @@ const Input: React.FC<InputProps> = React.memo(
     isClearable,
     isSearchable,
     style,
+    flat,
   }) => {
     let formContext = {};
     try {
@@ -432,9 +434,23 @@ const Input: React.FC<InputProps> = React.memo(
           return (
             <SelectComponent
               options={options}
-              value={value}
+              value={
+                flat
+                  ? !isMulti
+                    ? options?.find((x) => x.value === value)
+                    : options?.filter((x) => x.value === value)
+                  : value
+              }
               name={name}
-              onChange={(newValue) => handleChange(newValue)}
+              onChange={(newValue) => {
+                flat
+                  ? handleChange(
+                      Array.isArray(newValue)
+                        ? newValue.map((x) => x.value)
+                        : newValue.value
+                    )
+                  : handleChange(newValue);
+              }}
               onBlur={handleBlur}
               isDisabled={disabled}
               isLoading={loading}

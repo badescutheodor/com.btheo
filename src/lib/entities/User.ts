@@ -59,16 +59,4 @@ export class User {
 
   @OneToMany(() => Upload, upload => upload.user)
   uploads: Relation<Upload>[];
-
-  static async validate(entryData: Partial<User>): Promise<{ [key: string]: string[] }> {
-    const entry = plainToClass(User, entryData);
-    const errors = await validate(entry);
-    
-    return errors.reduce((acc, error: ValidationError) => {
-      if (error.property && error.constraints) {
-        acc[error.property] = Object.values(error.constraints);
-      }
-      return acc;
-    }, {} as { [key: string]: string[] });
-} 
 }

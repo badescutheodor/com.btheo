@@ -19,12 +19,15 @@ export async function createUser(name: string, email: string, password: string, 
 export async function getUserById(id: number) {
   const dataSource = await getDB();
   const userRepository = dataSource.getRepository(User);
-  return await userRepository.findOne({
+  const user = await userRepository.findOne({
     where: {
       id
     },
     relations: ['avatar'] 
   });
+
+  user.avatar = user.avatar ? user.avatar.path : null;
+  return user;
 }
 
 export async function validateUser(email: string, password: string) {

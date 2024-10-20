@@ -255,6 +255,10 @@ textarea.input {
   width: 100%;
 }
 
+.selectWrapper select {
+  appearance: none;
+}
+
 .selectIcon {
   position: absolute;
   right: var(--spacing-sm);

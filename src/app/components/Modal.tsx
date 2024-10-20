@@ -11,6 +11,7 @@ interface ModalProps {
   title?: string;
   children: React.ReactNode;
   fullScreen?: boolean;
+  style?: React.CSSProperties;
 }
 
 const Modal: React.FC<ModalProps> = ({
@@ -19,6 +20,7 @@ const Modal: React.FC<ModalProps> = ({
   onClose,
   children,
   fullScreen,
+  style,
 }) => {
   const [mounted, setMounted] = useState(false);
   const modalRef = useOutsideClick(onClose);
@@ -49,6 +51,7 @@ const Modal: React.FC<ModalProps> = ({
           [styles.fullScreen]: fullScreen,
           [styles.open]: isOpen,
         })}
+        style={style}
       >
         <button className={styles.closeButton} onClick={onClose}>
           <FiX />

@@ -6,7 +6,7 @@ import MarkdownIt from "markdown-it";
 import hljs from "highlight.js";
 import "highlight.js/styles/github.css";
 import { confirm } from "@/lib/utils-client";
-import { FiFilePlus, FiEye, FiTrash2, FiEdit, FiSearch } from "react-icons/fi";
+import { FiFilePlus, FiTrash2, FiEdit, FiSearch } from "react-icons/fi";
 import Modal from "@/app/components/Modal";
 import Button from "@/app/components/Button";
 import { FormProvider } from "@/app/components/FormProvider";
@@ -19,6 +19,7 @@ import { useFileManagement } from "@/hooks/useFiles";
 import "react-markdown-editor-lite/lib/index.css";
 import Table from "@/app/components/Table";
 import * as yup from "yup";
+import Alert from "@/app/components/Alert";
 
 const MdEditor = dynamic(() => import("react-markdown-editor-lite"), {
   ssr: false,
@@ -126,10 +127,11 @@ const SnippetForm: React.FC<{
                 </div>
               </div>
               <Input
-                type="react-select"
+                type="react-select-creatable"
                 name="language"
                 label="Language"
                 placeholder=""
+                flat
                 options={languages}
               />
               <Input type="switch" label="Featured" name="isFeatured" />
@@ -210,18 +212,6 @@ const SnippetTable: React.FC<{
           name: "Author",
           key: "author",
           label: "Author",
-          sortable: true,
-        },
-        {
-          name: "Views",
-          key: "views",
-          label: "Views",
-          sortable: true,
-        },
-        {
-          name: "Loved",
-          key: "loved",
-          label: "Loved",
           sortable: true,
         },
         {
@@ -442,6 +432,9 @@ const SnippetsPage: React.FC = () => {
         label: label.name,
       }));
     }
+    if (newSnippet.language?.value) {
+      newSnippet.language = newSnippet.language.value;
+    }
     return newSnippet;
   };
 
@@ -494,7 +487,17 @@ const SnippetsPage: React.FC = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(
           values.id
-            ? { ...values, content: updatedContent }
+            ? {
+                ...values,
+                ...(values.content ? { content: updatedContent } : {}),
+                ...(values.labels?.length
+                  ? {
+                      labels: values.labels.map((label) => ({
+                        id: label.value,
+                      })),
+                    }
+                  : {}),
+              }
             : {
                 ...snippet,
                 ...values,
@@ -528,6 +531,15 @@ const SnippetsPage: React.FC = () => {
 
   return (
     <div>
+      {error && (
+        <div className="row">
+          <div className="col-lg-12">
+            <div>
+              <Alert type="error">{error}</Alert>
+            </div>
+          </div>
+        </div>
+      )}
       <Modal
         isOpen={showModal}
         onClose={() => setShowModal(false)}

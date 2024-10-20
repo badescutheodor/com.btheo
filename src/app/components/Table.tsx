@@ -177,6 +177,11 @@ const Table: React.FC<TableProps> = ({
       return;
     }
 
+    if (value === data.find((dataItem) => dataItem.id === item.id)[field.key]) {
+      setEditingCell(null);
+      return;
+    }
+
     // Mark the field as touched
     setTouchedFields((prevTouched) => ({
       ...prevTouched,
@@ -302,7 +307,10 @@ const Table: React.FC<TableProps> = ({
                           name={field.key}
                           style={{ marginBottom: 0 }}
                           className={styles.input}
-                          autoFocus={item.id === "new" && fieldIndex === 1}
+                          autoFocus={
+                            (item.id === "new" && fieldIndex === 1) ||
+                            editingCell?.fieldKey === field.key
+                          }
                           type={
                             (typeof field.type === "function"
                               ? field.type(item)

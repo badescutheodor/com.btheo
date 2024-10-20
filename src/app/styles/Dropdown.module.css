@@ -1,6 +1,7 @@
 .dropdown {
   position: relative;
   font-size: var(--base-font-size);
+
   float: right;
 }
 
@@ -29,6 +30,8 @@
 
 .dropdownToggle span {
   margin-right: var(--spacing-xs);
+  display: flex;
+  align-items: center;
 }
 
 .dropdownMenu {

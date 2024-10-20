@@ -25,22 +25,22 @@ export async function GET(req: NextRequest) {
         limit: url.searchParams.get('limit'),
         search: url.searchParams.get('search'),
         searchFields: ['title', 'content', 'language', 'labels.name'],
+        sort: url.searchParams.get('sort')
       };
 
       queryHandler.setRoleFields('admin', [
         'id',
         'title',
         'content',
-        'views',
-        'loved',
+        'author.name:author',
         'language',
         'isFeatured',
-        'author',
       ]);
 
       const result = await queryHandler.filterMulti(options, ['labels', 'author'], user?.role);
       return NextResponse.json(result);
     } catch (error) {
+      console.log(error);
       return NextResponse.json({ message: 'Error fetching snippets' }, { status: 500 });
     }
 }
@@ -57,27 +57,28 @@ export async function POST(req: NextRequest) {
         const snippetRepository = db.getRepository(Snippet);
         const labelRepository = db.getRepository(Label);
         const reqBody = await req.json();
-        const { title, content, language, isFeatured, labelIds } = reqBody;
+        const { title, content, language, isFeatured, labels: labelIds } = reqBody;
         const errors = await EntityValidator.validate(reqBody, Snippet);
         
         if (Object.keys(errors).length > 0) {
           return NextResponse.json({ errors }, { status: 400 });
         }
 
-        const labels = await labelRepository.findByIds(labelIds);
+        const labels = await labelRepository.findByIds(labelIds.map((label: any) => label.id));
 
         const snippet = snippetRepository.create({
             title,
             content,
             language,
             isFeatured,
-            author: { id: user.userId },
+            author: { id: user.id },
             labels,
         });
 
         await snippetRepository.save(snippet);
         return NextResponse.json(snippet);
     } catch (error) {
+      console.log(error);
         return NextResponse.json({ message: 'Error creating snippet' }, { status: 500 });
     }
 }
@@ -85,6 +86,7 @@ export async function POST(req: NextRequest) {
 export async function PUT(req: NextRequest) {
     try {
       const user = await getSession(req);
+
       if (!user) {
         return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
       }
@@ -93,13 +95,14 @@ export async function PUT(req: NextRequest) {
       const snippetRepository = db.getRepository(Snippet);
       const labelRepository = db.getRepository(Label);
   
-      const { id, title, content, language, isFeatured, labelIds } = await req.json();
+      const reqBody = await req.json();
+      let { id, title, content, language, isFeatured, labels: labelIds } = reqBody;
   
-      const snippet = await snippetRepository.findOne({
+      let snippet = await snippetRepository.findOne({
         where: { id },
         relations: ['author', 'labels'],
       });
-  
+
       if (!snippet) {
         return NextResponse.json({ message: 'Snippet not found' }, { status: 404 });
       }
@@ -107,16 +110,14 @@ export async function PUT(req: NextRequest) {
       if (snippet.author.id !== user.id && user.role !== 'admin') {
         return NextResponse.json({ message: 'Unauthorized' }, { status: 403 });
       }
-  
-      const labels = await labelRepository.findByIds(labelIds);
-  
-      snippet.title = title;
-      snippet.content = content;
-      snippet.language = language;
-      snippet.isFeatured = isFeatured;
-      snippet.labels = labels;
       
-      const errors = await Snippet.validate(snippet);
+      if (labelIds) {
+        reqBody.labels = await labelRepository.findByIds(labelIds.map((label: any) => label.id));
+      }  
+
+      snippet = snippetRepository.merge(snippet, reqBody);
+  
+      const errors = await EntityValidator.validate(snippet, Snippet);
       
       if (Object.keys(errors).length > 0) {
         return NextResponse.json({ errors }, { status: 400 });
@@ -125,6 +126,7 @@ export async function PUT(req: NextRequest) {
       await snippetRepository.save(snippet);
       return NextResponse.json(snippet);
     } catch (error) {
+      console.log(error);
       return NextResponse.json({ message: 'Error updating snippet' }, { status: 500 });
     }
 }

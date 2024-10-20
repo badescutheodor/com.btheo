@@ -3,26 +3,28 @@ import { User } from '@/lib/entities/User';
 import { Upload } from '@/lib/entities/Upload';
 import bcrypt from 'bcryptjs';
 import { getDB } from '@/lib/db';
+import EntityValidator from '@/lib/entities/EntityValidator';
+import { getSession } from '@/lib/auth';
 
 export async function PUT(req: NextRequest, { params }: any) {
+  const user = await getSession(req);
+
+  if (!user) {
+    return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+  }
+
   const db = await getDB();
   const userRepository = db.getRepository(User);
   const uploadRepository = db.getRepository(Upload);
   const id: number = Number(params.id);
-  const user = await userRepository.findOne({ 
-    where: { id },
-    relations: ['avatar'] 
-});
+  let entity = await userRepository.findOne({ where: { id }, relations: ['avatar'] });
 
-  if (!user) {
+  if (!entity) {
     return NextResponse.json({ message: 'User not found' }, { status: 404 });
   }
 
-  const { name, email, password, role, avatar } = await req.json();
-  user.name = name;
-  user.email = email;
-  user.role = role;
-  user.password = await bcrypt.hash(password, 10);
+  const reqBody = await req.json();
+  const { name, email, password, role, avatar } = reqBody;
 
   if (avatar) {
     const newAvatar = await uploadRepository.findOne({ where: { id: avatar.id } });
@@ -32,32 +34,40 @@ export async function PUT(req: NextRequest, { params }: any) {
     user.avatar = newAvatar;
   }
 
-  if (password) {
-    user.password = await bcrypt.hash(password, 10);
+  if (reqBody.password) {
+    reqBody.password = await bcrypt.hash(password, 10);
   }
 
-  const errors = await User.validate(user);
+  entity = userRepository.merge(entity, reqBody);
+  const errors = await EntityValidator.validate(entity, User);
     
   if (Object.keys(errors).length > 0) {
     return NextResponse.json({ errors }, { status: 400 });
   }
 
-  await userRepository.save(user);
+  await userRepository.save(entity);
   return NextResponse.json(user);
 }
 
 export async function DELETE(req: NextRequest, { params }: any) {
+    const user = await getSession(req);
+
+    if (!user) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    }
+
     const db = await getDB();
     const userRepository = db.getRepository(User);
     const id: number = Number(params.id);
-    const user = await userRepository.findOne({ 
+    const entity = await userRepository.findOne({ 
         where: { id },
         relations: ['avatar'] 
     });
-    if (!user) {
+
+    if (!entity) {
       return NextResponse.json({ message: 'User not found' }, { status: 404 });
     }
   
-    await userRepository.remove(user);
+    await userRepository.remove(entity);
     return NextResponse.json({ message: 'User deleted' });
 }
