@@ -309,6 +309,337 @@ const analyticJobs: AnalyticJob[] = [
     },
   },
   {
+    type: 'BOUNCE_RATE',
+    query: `
+      WITH session_data AS (
+        SELECT 
+          sessionId,
+          COUNT(*) as pageviews,
+          MAX(CASE WHEN type = :conversionType THEN 1 ELSE 0 END) as has_conversion
+        FROM raw_analytic
+        WHERE createdAt >= :start AND createdAt < :end
+        GROUP BY sessionId
+      )
+      SELECT 
+        COUNT(CASE WHEN pageviews = 1 AND has_conversion = 0 THEN 1 END) * 100.0 / COUNT(*) as bounce_rate
+      FROM session_data
+    `,
+    params: { conversionType: AnalyticType.CONVERSION },
+    processResult: (result, date) => ({
+      date,
+      bounceRate: parseFloat(result[0].bounce_rate).toFixed(2)
+    }),
+  },
+  {
+    type: 'USER_RETENTION',
+    query: `
+      WITH user_sessions AS (
+        SELECT 
+          ipAddress,
+          MIN(DATE(createdAt)) as first_visit,
+          MAX(DATE(createdAt)) as last_visit
+        FROM raw_analytic
+        WHERE createdAt >= :start AND createdAt < :end
+        GROUP BY ipAddress
+      )
+      SELECT 
+        DATEDIFF(last_visit, first_visit) as days_since_first_visit,
+        COUNT(*) as user_count
+      FROM user_sessions
+      GROUP BY days_since_first_visit
+      ORDER BY days_since_first_visit
+    `,
+    params: {},
+    processResult: (result, date) => ({
+      date,
+      retentionData: result.map((row: any) => ({
+        daysSinceFirstVisit: row.days_since_first_visit,
+        userCount: parseInt(row.user_count)
+      }))
+    }),
+  },
+  {
+    type: 'CONVERSION_FUNNEL',
+    query: `
+      WITH funnel_steps AS (
+        SELECT
+          sessionId,
+          MAX(CASE WHEN type = :pageViewType THEN 1 ELSE 0 END) as reached_step1,
+          MAX(CASE WHEN type = :formSubmissionType THEN 1 ELSE 0 END) as reached_step2,
+          MAX(CASE WHEN type = :conversionType THEN 1 ELSE 0 END) as reached_step3
+        FROM raw_analytic
+        WHERE createdAt >= :start AND createdAt < :end
+        GROUP BY sessionId
+      )
+      SELECT
+        SUM(reached_step1) as step1_count,
+        SUM(reached_step2) as step2_count,
+        SUM(reached_step3) as step3_count
+      FROM funnel_steps
+    `,
+    params: { 
+      pageViewType: AnalyticType.PAGE_VIEW,
+      formSubmissionType: AnalyticType.FORM_SUBMISSION,
+      conversionType: AnalyticType.CONVERSION
+    },
+    processResult: (result, date) => ({
+      date,
+      funnelSteps: [
+        { name: 'Page View', count: parseInt(result[0].step1_count) },
+        { name: 'Form Submission', count: parseInt(result[0].step2_count) },
+        { name: 'Conversion', count: parseInt(result[0].step3_count) }
+      ]
+    }),
+  },
+  {
+    type: 'PAGE_PERFORMANCE',
+    query: `
+      SELECT 
+        data->>'pathname' as pathname,
+        AVG(CAST(data->>'pageLoadTime' AS FLOAT)) as avg_load_time,
+        COUNT(*) as view_count
+      FROM raw_analytic
+      WHERE 
+        type = :pageLoadType 
+        AND createdAt >= :start 
+        AND createdAt < :end
+      GROUP BY data->>'pathname'
+      ORDER BY view_count DESC
+      LIMIT 10
+    `,
+    params: { pageLoadType: AnalyticType.PAGE_LOAD },
+    processResult: (result, date) => ({
+      date,
+      pagePerformance: result.map((row: any) => ({
+        pathname: row.pathname,
+        avgLoadTime: parseFloat(row.avg_load_time).toFixed(2),
+        viewCount: parseInt(row.view_count)
+      }))
+    }),
+  },
+  {
+    type: 'USER_FLOW',
+    query: `
+      WITH ordered_pages AS (
+        SELECT 
+          sessionId,
+          data->>'pathname' as pathname,
+          ROW_NUMBER() OVER (PARTITION BY sessionId ORDER BY createdAt) as page_order
+        FROM raw_analytic
+        WHERE 
+          type = :pageViewType
+          AND createdAt >= :start 
+          AND createdAt < :end
+      )
+      SELECT 
+        p1.pathname as from_page,
+        p2.pathname as to_page,
+        COUNT(*) as transition_count
+      FROM ordered_pages p1
+      JOIN ordered_pages p2 ON p1.sessionId = p2.sessionId AND p1.page_order = p2.page_order - 1
+      GROUP BY p1.pathname, p2.pathname
+      ORDER BY transition_count DESC
+      LIMIT 20
+    `,
+    params: { pageViewType: AnalyticType.PAGE_VIEW },
+    processResult: (result, date) => ({
+      date,
+      userFlows: result.map((row: any) => ({
+        fromPage: row.from_page,
+        toPage: row.to_page,
+        transitionCount: parseInt(row.transition_count)
+      }))
+    }),
+  },
+  {
+    type: 'CHANNEL_PERFORMANCE',
+    query: `
+      SELECT 
+        data->>'channel' as channel,
+        COUNT(DISTINCT sessionId) as sessions,
+        COUNT(DISTINCT ipAddress) as unique_visitors,
+        COUNT(*) as total_events,
+        SUM(CASE WHEN type = :conversionType THEN 1 ELSE 0 END) as conversions
+      FROM raw_analytic
+      WHERE createdAt >= :start AND createdAt < :end
+      GROUP BY data->>'channel'
+      ORDER BY sessions DESC
+    `,
+    params: { conversionType: AnalyticType.CONVERSION },
+    processResult: (result, date) => ({
+      date,
+      channelPerformance: result.map((row: any) => ({
+        channel: row.channel,
+        sessions: parseInt(row.sessions),
+        uniqueVisitors: parseInt(row.unique_visitors),
+        totalEvents: parseInt(row.total_events),
+        conversions: parseInt(row.conversions),
+        conversionRate: (parseInt(row.conversions) / parseInt(row.sessions) * 100).toFixed(2)
+      }))
+    }),
+  },
+  {
+    type: 'CHANNEL_ATTRIBUTION',
+    query: `
+      WITH first_touch AS (
+        SELECT 
+          sessionId,
+          FIRST_VALUE(data->>'channel') OVER (PARTITION BY sessionId ORDER BY createdAt) as first_channel
+        FROM raw_analytic
+        WHERE createdAt >= :start AND createdAt < :end
+      ),
+      last_touch AS (
+        SELECT 
+          sessionId,
+          LAST_VALUE(data->>'channel') OVER (PARTITION BY sessionId ORDER BY createdAt ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) as last_channel
+        FROM raw_analytic
+        WHERE createdAt >= :start AND createdAt < :end
+      ),
+      conversions AS (
+        SELECT DISTINCT sessionId
+        FROM raw_analytic
+        WHERE type = :conversionType AND createdAt >= :start AND createdAt < :end
+      )
+      SELECT 
+        COALESCE(ft.first_channel, lt.last_channel) as channel,
+        COUNT(DISTINCT CASE WHEN ft.first_channel IS NOT NULL THEN c.sessionId END) as first_touch_conversions,
+        COUNT(DISTINCT CASE WHEN lt.last_channel IS NOT NULL THEN c.sessionId END) as last_touch_conversions
+      FROM conversions c
+      LEFT JOIN first_touch ft ON c.sessionId = ft.sessionId
+      LEFT JOIN last_touch lt ON c.sessionId = lt.sessionId
+      GROUP BY COALESCE(ft.first_channel, lt.last_channel)
+    `,
+    params: { conversionType: AnalyticType.CONVERSION },
+    processResult: (result, date) => ({
+      date,
+      channelAttribution: result.map((row: any) => ({
+        channel: row.channel,
+        firstTouchConversions: parseInt(row.first_touch_conversions),
+        lastTouchConversions: parseInt(row.last_touch_conversions)
+      }))
+    }),
+  },
+  {
+    type: 'UTM_CAMPAIGN_PERFORMANCE',
+    query: `
+      SELECT 
+        data->>'utm_source' as utm_source,
+        data->>'utm_medium' as utm_medium,
+        data->>'utm_campaign' as utm_campaign,
+        COUNT(DISTINCT sessionId) as sessions,
+        COUNT(DISTINCT ipAddress) as unique_visitors,
+        SUM(CASE WHEN type = :conversionType THEN 1 ELSE 0 END) as conversions
+      FROM raw_analytic
+      WHERE 
+        createdAt >= :start AND createdAt < :end
+        AND data->>'utm_source' IS NOT NULL
+      GROUP BY data->>'utm_source', data->>'utm_medium', data->>'utm_campaign'
+      ORDER BY sessions DESC
+    `,
+    params: { conversionType: AnalyticType.CONVERSION },
+    processResult: (result, date) => ({
+      date,
+      utmCampaignPerformance: result.map((row: any) => ({
+        utmSource: row.utm_source,
+        utmMedium: row.utm_medium,
+        utmCampaign: row.utm_campaign,
+        sessions: parseInt(row.sessions),
+        uniqueVisitors: parseInt(row.unique_visitors),
+        conversions: parseInt(row.conversions),
+        conversionRate: (parseInt(row.conversions) / parseInt(row.sessions) * 100).toFixed(2)
+      }))
+    }),
+  },
+  {
+    type: 'CHANNEL_ENGAGEMENT',
+    query: `
+      SELECT 
+        data->>'channel' as channel,
+        AVG(EXTRACT(EPOCH FROM (MAX(createdAt) - MIN(createdAt)))) as avg_session_duration,
+        AVG(page_views) as avg_page_views
+      FROM (
+        SELECT 
+          sessionId,
+          data->>'channel' as channel,
+          COUNT(*) as page_views
+        FROM raw_analytic
+        WHERE 
+          type = :pageViewType
+          AND createdAt >= :start AND createdAt < :end
+        GROUP BY sessionId, data->>'channel'
+      ) session_data
+      JOIN raw_analytic USING (sessionId)
+      GROUP BY data->>'channel'
+    `,
+    params: { pageViewType: AnalyticType.PAGE_VIEW },
+    processResult: (result, date) => ({
+      date,
+      channelEngagement: result.map((row: any) => ({
+        channel: row.channel,
+        avgSessionDuration: parseFloat(row.avg_session_duration).toFixed(2),
+        avgPageViews: parseFloat(row.avg_page_views).toFixed(2)
+      }))
+    }),
+  },
+  {
+    type: 'NEW_VS_RETURNING_BY_CHANNEL',
+    query: `
+      WITH user_visits AS (
+        SELECT 
+          ipAddress,
+          data->>'channel' as channel,
+          MIN(createdAt) as first_visit
+        FROM raw_analytic
+        GROUP BY ipAddress, data->>'channel'
+      )
+      SELECT 
+        channel,
+        SUM(CASE WHEN first_visit >= :start THEN 1 ELSE 0 END) as new_visitors,
+        SUM(CASE WHEN first_visit < :start THEN 1 ELSE 0 END) as returning_visitors
+      FROM user_visits
+      WHERE first_visit < :end
+      GROUP BY channel
+    `,
+    params: {},
+    processResult: (result, date) => ({
+      date,
+      newVsReturning: result.map((row: any) => ({
+        channel: row.channel,
+        newVisitors: parseInt(row.new_visitors),
+        returningVisitors: parseInt(row.returning_visitors)
+      }))
+    }),
+  },
+  {
+    type: 'DEVICE_CROSS_USAGE',
+    query: `
+      WITH user_devices AS (
+        SELECT 
+          ipAddress,
+          data->>'deviceType' as device_type
+        FROM raw_analytic
+        WHERE createdAt >= :start AND createdAt < :end
+        GROUP BY ipAddress, data->>'deviceType'
+      )
+      SELECT 
+        STRING_AGG(device_type, ', ' ORDER BY device_type) as device_combination,
+        COUNT(DISTINCT ipAddress) as user_count
+      FROM user_devices
+      GROUP BY ipAddress
+      HAVING COUNT(DISTINCT device_type) > 1
+      GROUP BY device_combination
+      ORDER BY user_count DESC
+    `,
+    params: {},
+    processResult: (result, date) => ({
+      date,
+      deviceCrossUsage: result.map((row: any) => ({
+        deviceCombination: row.device_combination,
+        userCount: parseInt(row.user_count)
+      }))
+    }),
+  },
+  {
     type: 'AVERAGE_SESSION_DURATION',
     query: `
       WITH session_times AS (
