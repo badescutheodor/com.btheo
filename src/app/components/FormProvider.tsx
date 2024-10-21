@@ -7,6 +7,7 @@ import React, {
   useEffect,
 } from "react";
 import * as yup from "yup";
+import { useAnalytics } from "../contexts/AnalyticsContext";
 
 type ValidationRule =
   | yup.AnySchema
@@ -59,6 +60,7 @@ export const FormProvider: React.FC<FormProviderProps> = ({
   onSubmit,
   enableEnterSubmit = true,
 }) => {
+  const { y } = useAnalytics();
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [values, setValues] = useState(initialValues || {});
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -175,6 +177,7 @@ export const FormProvider: React.FC<FormProviderProps> = ({
       }
 
       if (isValid) {
+        y("FORM_SUBMISSION");
         const result: any = await onSubmit(values || {});
 
         if (result && result.success) {
