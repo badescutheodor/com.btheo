@@ -13,6 +13,7 @@ import {
   flushQueue,
   AnalyticType,
   getAnalyticsData,
+  detectChannel,
 } from "../../lib/utils-client";
 
 interface AnalyticsContextType {
@@ -106,7 +107,7 @@ export const AnalyticsProvider: React.FC<AnalyticsProviderProps> = ({
   }, [pathname, searchParams]);
 
   const trackEvent = useCallback(
-    async (type: string | number, data?: object) => {
+    async (type: string | number, data?: Record<string, unknown>) => {
       try {
         await y(type, data);
       } catch (error) {
@@ -135,6 +136,7 @@ export const AnalyticsProvider: React.FC<AnalyticsProviderProps> = ({
       pathname: pathname,
       params: searchParams,
       ...getAnalyticsData(),
+      ...detectChannel(),
     });
   }, [trackEvent, pathname, searchParams]);
 

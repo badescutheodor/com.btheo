@@ -211,7 +211,7 @@ const analyticJobs: AnalyticJob[] = [
            CAST(substr(substr(ipAddress, instr(ipAddress, '.')+1), 1, instr(substr(ipAddress, instr(ipAddress, '.')+1), '.')-1) AS INTEGER) * 65536 +
            CAST(substr(substr(ipAddress, instr(ipAddress, '.', instr(ipAddress, '.')+1)+1), 1, instr(substr(ipAddress, instr(ipAddress, '.', instr(ipAddress, '.')+1)+1), '.')-1) AS INTEGER) * 256 +
            CAST(substr(ipAddress, instr(ipAddress, '.', instr(ipAddress, '.', instr(ipAddress, '.')+1)+1)+1) AS INTEGER)) 
-          BETWEEN ip_from AND ip_to
+          BETWEEN ipFrom AND ipTo
         WHERE 
           type = ? 
           AND createdAt >= ? 

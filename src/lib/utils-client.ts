@@ -431,7 +431,6 @@ export async function y(type: string | number, data?: Record<string, unknown>) {
   // Check if service worker and background sync are available
   if ('serviceWorker' in navigator && 'SyncManager' in window) {
       try {
-        throw "X";
           const registration = await navigator.serviceWorker.ready;
           if (registration.active) {
               // Add to queue and request background sync
@@ -448,4 +447,198 @@ export async function y(type: string | number, data?: Record<string, unknown>) {
 
   // If we reach here, background sync is not available, so send directly
   await sendAnalytics([encryptData(processedEvent)]);
+}
+
+interface UtmParams {
+  utm_source?: string;
+  utm_medium?: string;
+  utm_campaign?: string;
+  utm_term?: string;
+  utm_content?: string;
+}
+
+interface ChannelDetectionResult {
+  channel: string;
+  utmParams: UtmParams;
+  isNewSession: boolean;
+}
+
+type ReferralCategories = {
+  [key: string]: string[];
+};
+
+type SearchEngines = {
+  [key: string]: string;
+};
+
+export function detectChannel(): ChannelDetectionResult {
+  const ATTRIBUTION_WINDOW = 30 * 24 * 60 * 60 * 1000; // 30 days in milliseconds
+  const CHANNEL_STORAGE_KEY = 'userChannel';
+  const CHANNEL_TIMESTAMP_KEY = 'channelTimestamp';
+  const UTM_STORAGE_KEY = 'utmParams';
+
+  const PAID_KEYWORDS: string[] = ['ppc', 'cpc', 'cpm', 'cpv', 'paidsearch', 'adwords'];
+  const ORGANIC_SOCIAL: string[] = ['facebook.com', 'twitter.com', 'linkedin.com', 'instagram.com', 'pinterest.com', 't.co'];
+  const PAID_SOCIAL: string[] = ['facebook:ad', 'instagram:ad', 'liads', 'ads.twitter.com'];
+  
+  const SEARCH_ENGINES: SearchEngines = {
+    'google': 'Google',
+    'bing': 'Bing',
+    'yahoo': 'Yahoo',
+    'baidu': 'Baidu',
+    'duckduckgo': 'DuckDuckGo',
+    'yandex': 'Yandex'
+  };
+
+  const REFERRAL_CATEGORIES: ReferralCategories = {
+    'news': ['nytimes.com', 'cnn.com', 'bbc.com', 'theguardian.com'],
+    'tech': ['techcrunch.com', 'wired.com', 'cnet.com', 'theverge.com'],
+    'ecommerce': ['amazon.com', 'ebay.com', 'etsy.com', 'shopify.com']
+  };
+
+  function getUrlParams(): URLSearchParams {
+    return new URLSearchParams(window.location.search);
+  }
+
+  function isExpired(timestamp: number): boolean {
+    return Date.now() - timestamp > ATTRIBUTION_WINDOW;
+  }
+
+  function categorizeReferral(referrer: string): string {
+    const domain = new URL(referrer).hostname;
+    for (const [category, domains] of Object.entries(REFERRAL_CATEGORIES)) {
+      if (domains.some(d => domain.includes(d))) {
+        return `referral_${category}`;
+      }
+    }
+    return 'referral_other';
+  }
+
+  function detectPaidSearch(source: string | undefined, medium: string | undefined, term: string | undefined): string | null {
+    if (PAID_KEYWORDS.some(keyword => medium?.includes(keyword))) {
+      return `paid_search_${source || 'unknown'}`;
+    }
+    if (source === 'google' && medium === 'cpc') {
+      return 'paid_search_google';
+    }
+    if (term && PAID_KEYWORDS.some(keyword => term.includes(keyword))) {
+      return `paid_search_${source || 'unknown'}`;
+    }
+    return null;
+  }
+
+  function detectSocial(referrer: string, utmSource: string | undefined, utmMedium: string | undefined): string | null {
+    if (PAID_SOCIAL.some(domain => referrer.includes(domain) || utmSource?.includes(domain))) {
+      return 'paid_social';
+    }
+    if (ORGANIC_SOCIAL.some(domain => referrer.includes(domain))) {
+      return 'organic_social';
+    }
+    if (utmSource && ORGANIC_SOCIAL.some(domain => utmSource.includes(domain))) {
+      return utmMedium === 'cpc' ? 'paid_social' : 'organic_social';
+    }
+    return null;
+  }
+
+  function detectSearchEngine(referrer: string): string | null {
+    for (const [key, value] of Object.entries(SEARCH_ENGINES)) {
+      if (referrer.includes(key)) {
+        return `organic_search_${value.toLowerCase()}`;
+      }
+    }
+    return null;
+  }
+
+  function saveChannelData(channel: string, utmParams: UtmParams): void {
+    localStorage.setItem(CHANNEL_STORAGE_KEY, channel);
+    localStorage.setItem(CHANNEL_TIMESTAMP_KEY, Date.now().toString());
+    if (Object.keys(utmParams).length > 0) {
+      localStorage.setItem(UTM_STORAGE_KEY, JSON.stringify(utmParams));
+    }
+  }
+
+  // Check if we have a recent stored channel
+  const storedChannel = localStorage.getItem(CHANNEL_STORAGE_KEY);
+  const timestamp = parseInt(localStorage.getItem(CHANNEL_TIMESTAMP_KEY) || '0');
+  if (storedChannel && !isExpired(timestamp)) {
+    return {
+      channel: storedChannel,
+      utmParams: JSON.parse(localStorage.getItem(UTM_STORAGE_KEY) || '{}'),
+      isNewSession: false
+    };
+  }
+
+  // If we're here, we need to detect a new channel
+  const urlParams = getUrlParams();
+  const utmSource = urlParams.get('utm_source')?.toLowerCase();
+  const utmMedium = urlParams.get('utm_medium')?.toLowerCase();
+  const utmCampaign = urlParams.get('utm_campaign')?.toLowerCase();
+  const utmTerm = urlParams.get('utm_term')?.toLowerCase();
+  const utmContent = urlParams.get('utm_content')?.toLowerCase();
+  
+  const referrer = document.referrer.toLowerCase();
+
+  const utmParams: UtmParams = {
+    utm_source: utmSource,
+    utm_medium: utmMedium,
+    utm_campaign: utmCampaign,
+    utm_term: utmTerm,
+    utm_content: utmContent
+  };
+
+  let channel: string;
+
+  // Check for paid search
+  channel = detectPaidSearch(utmSource, utmMedium, utmTerm) || '';
+  if (channel) {
+    saveChannelData(channel, utmParams);
+    return { channel, utmParams, isNewSession: true };
+  }
+
+  // Check for social
+  channel = detectSocial(referrer, utmSource, utmMedium) || '';
+  if (channel) {
+    saveChannelData(channel, utmParams);
+    return { channel, utmParams, isNewSession: true };
+  }
+
+  // Check for organic search
+  channel = detectSearchEngine(referrer) || '';
+  if (channel) {
+    saveChannelData(channel, utmParams);
+    return { channel, utmParams, isNewSession: true };
+  }
+
+  // Check for email
+  if (utmMedium === 'email') {
+    channel = 'email';
+    saveChannelData(channel, utmParams);
+    return { channel, utmParams, isNewSession: true };
+  }
+
+  // Check for referral
+  if (referrer && new URL(referrer).hostname !== window.location.hostname) {
+    channel = categorizeReferral(referrer);
+    saveChannelData(channel, utmParams);
+    return { channel, utmParams, isNewSession: true };
+  }
+
+  // If utm_source exists but hasn't been categorized yet, use it as the channel
+  if (utmSource) {
+    channel = `other_${utmSource}`;
+    saveChannelData(channel, utmParams);
+    return { channel, utmParams, isNewSession: true };
+  }
+
+  // Direct
+  if (!referrer) {
+    channel = 'direct';
+    saveChannelData(channel, utmParams);
+    return { channel, utmParams, isNewSession: true };
+  }
+
+  // Fallback
+  channel = 'other';
+  saveChannelData(channel, utmParams);
+  return { channel, utmParams, isNewSession: true };
 }
