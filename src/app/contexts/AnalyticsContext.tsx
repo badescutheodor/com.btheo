@@ -154,18 +154,22 @@ export const AnalyticsProvider: React.FC<AnalyticsProviderProps> = ({
           if (isExternal) {
             trackEvent(AnalyticType.EXTERNAL_LINK_CLICK, {
               url: href,
+              from: window.location.href,
               elementType: closestLink.tagName,
               linkText: closestLink.textContent,
             });
           } else {
             trackEvent(AnalyticType.CLICK, {
               linkText: closestLink.textContent,
+              from: window.location.href,
+              to: href,
             });
           }
         }
       } else {
         trackEvent(AnalyticType.CLICK, {
           elementType: target.tagName,
+          text: target.textContent,
           coords: { x: e.clientX, y: e.clientY },
         });
       }
@@ -218,7 +222,7 @@ export const AnalyticsProvider: React.FC<AnalyticsProviderProps> = ({
 
   const setupPageUnloadTracking = useCallback(() => {
     const handleUnload = () => {
-      trackEvent(AnalyticType.PAGE_UNLOAD, {});
+      trackEvent(AnalyticType.PAGE_UNLOAD);
     };
     window.addEventListener("beforeunload", handleUnload);
     return () => window.removeEventListener("beforeunload", handleUnload);

@@ -177,7 +177,7 @@ export const FormProvider: React.FC<FormProviderProps> = ({
       }
 
       if (isValid) {
-        y("FORM_SUBMISSION");
+        typeof children === "function" && y("FORM_SUBMISSION");
         const result: any = await onSubmit(values || {});
 
         if (result && result.success) {
