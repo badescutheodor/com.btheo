@@ -6,7 +6,6 @@ import { getDB } from '../lib/db';
 import { createReadStream } from 'fs';
 import unzipper from 'unzipper';
 import csvParser from 'csv-parser';
-import { Ip2Location } from '../lib/entities'; // Ensure this path is correct
 
 const IP2LOCATION_DOWNLOAD_URL = 'https://www.ip2location.com/download/?token=1JgKcK31nwhbf9SQ4Sh9ggL04HTTDrm4NqLpMl5erspdRsQdjJIxyLDXhQXxCiag&file=DB1LITECSV';
 
@@ -35,46 +34,85 @@ async function unzipFile(zipPath: string, extractPath: string): Promise<void> {
 }
 
 async function importCSV(csvPath: string, queryRunner: QueryRunner): Promise<void> {
-  const ip2LocationRepo = queryRunner.manager.getRepository(Ip2Location);
+  const batchSize = 1000;
+  let batch: any[] = [];
+  
   return new Promise((resolve, reject) => {
-    const insertPromises: Promise<Ip2Location>[] = [];
     createReadStream(csvPath)
-      .pipe(csvParser())
-      .on('data', (row: any) => {
-        const ip2Location = new Ip2Location();
-        ip2Location.ipFrom = BigInt(row.ip_from);
-        ip2Location.ipTo = BigInt(row.ip_to);
-        ip2Location.countryCode = row.country_code;
-        ip2Location.countryName = row.country_name;
-        
-        insertPromises.push(ip2LocationRepo.save(ip2Location));
+      .pipe(csvParser(['ipFrom', 'ipTo', 'countryCode', 'countryName']))
+      .on('data', async (row: any) => {
+        batch.push({
+          ipFrom: BigInt(row.ipFrom),
+          ipTo: BigInt(row.ipTo),
+          countryCode: row.countryCode,
+          countryName: row.countryName
+        });
+
+        if (batch.length >= batchSize) {
+          try {
+            await queryRunner.query(
+              `INSERT INTO ip2location (ipFrom, ipTo, countryCode, countryName) 
+               VALUES ${batch.map(() => '(?, ?, ?, ?)').join(', ')}`,
+              batch.flatMap(item => [
+                item.ipFrom.toString(),
+                item.ipTo.toString(),
+                item.countryCode,
+                item.countryName
+              ])
+            );
+            batch = [];
+          } catch (error) {
+            reject(error);
+          }
+        }
       })
-      .on('end', () => {
-        Promise.all(insertPromises)
-          .then(() => resolve())
-          .catch(reject);
+      .on('end', async () => {
+        try {
+          if (batch.length > 0) {
+            await queryRunner.query(
+              `INSERT INTO ip2location_temp (ipFrom, ipTo, countryCode, countryName) 
+               VALUES ${batch.map(() => '(?, ?, ?, ?)').join(', ')}`,
+              batch.flatMap(item => [
+                item.ipFrom.toString(),
+                item.ipTo.toString(),
+                item.countryCode,
+                item.countryName
+              ])
+            );
+          }
+          resolve();
+        } catch (error) {
+          reject(error);
+        }
       })
       .on('error', reject);
   });
 }
 
 async function updateDatabase(csvPath: string, queryRunner: QueryRunner): Promise<void> {
+  // Drop existing temp table if exists
   await queryRunner.query(`DROP TABLE IF EXISTS ip2location_temp`);
+  
+  // Create temporary table
   await queryRunner.query(`
     CREATE TABLE ip2location_temp (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      ipFrom BIGINT,
-      ipTo BIGINT,
-      countryCode TEXT,
-      countryName TEXT
+      ipFrom TEXT NOT NULL,
+      ipTo TEXT NOT NULL,
+      countryCode TEXT NOT NULL,
+      countryName TEXT NOT NULL
     )
   `);
 
+  // Import data
   await importCSV(csvPath, queryRunner);
 
+  // Create indices on temp table
+  await queryRunner.query(`CREATE INDEX idx_ip_range_temp ON ip2location_temp (ipFrom, ipTo)`);
+
+  // Swap tables
   await queryRunner.query(`DROP TABLE IF EXISTS ip2location`);
   await queryRunner.query(`ALTER TABLE ip2location_temp RENAME TO ip2location`);
-  await queryRunner.query(`CREATE INDEX idx_ip_range ON ip2location (ipFrom, ipTo)`);
 }
 
 export async function updateIp2LocationDatabase(): Promise<void> {
@@ -109,14 +147,13 @@ export async function updateIp2LocationDatabase(): Promise<void> {
     } finally {
       await queryRunner.release();
     }
-  } catch (error) {
-    console.error('Error updating IP2Location database:', error);
-  } finally {
+
     // Clean up temporary files
     if (fs.existsSync(zipPath)) fs.unlinkSync(zipPath);
     if (fs.existsSync(csvPath)) fs.unlinkSync(csvPath);
     if (fs.existsSync(tempDir)) fs.rmdirSync(tempDir);
+  } catch (error) {
+    console.error('Error updating IP2Location database:', error);
+    throw error;
   }
 }
-
-updateIp2LocationDatabase();

@@ -1,17 +1,15 @@
-import { Entity, PrimaryGeneratedColumn, Column, Index, CreateDateColumn, UpdateDateColumn, PrimaryColumn } from "typeorm";
+import { Entity, PrimaryGeneratedColumn, Column } from "typeorm";
 
 @Entity()
 export class Ip2Location {
     @PrimaryGeneratedColumn()
     id: number;
 
-    @Index()
-    @Column("bigint")
-    ipFrom: bigint;
+    @Column("text")
+    ipFrom: string;
 
-    @Index()
-    @Column("bigint")
-    ipTo: bigint;
+    @Column("text")
+    ipTo: string;
 
     @Column()
     countryCode: string;

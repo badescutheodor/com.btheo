@@ -140,571 +140,128 @@ const runAnalyticJob = async (job: AnalyticJob, date: moment.Moment) => {
   });
 };
 
-const analyticJobs: AnalyticJob[] = [
-  {
-    type: 'DAILY_UNIQUE_VISITORS',
-    query: `
-      SELECT COUNT(DISTINCT ipAddress) as count
-      FROM raw_analytic
-      WHERE createdAt >= :start AND createdAt < :end
-    `,
-    params: {},
-    processResult: (result, date) => {
-      const timeSeries = result.map((row: any) => ({
-        time: row.timeSlot,
-        count: parseInt(row.count)
-      }));
-      return {
-        date,
-        count: timeSeries[timeSeries.length - 1].count,
-        timeSeries,
-        predictedValues: calculatePredictedValues(timeSeries, 'count')
-      };
-    },
-  },
-  {
-    type: 'DAILY_CONVERSIONS',
-    query: `
-      SELECT COUNT(*) as count
-      FROM raw_analytic
-      WHERE type = :type AND createdAt >= :start AND createdAt < :end
-    `,
-    params: { type: AnalyticType.CONVERSION },
-    processResult: (result, date) => {
-      const timeSeries = result.map((row: any) => ({
-        time: row.timeSlot,
-        count: parseInt(row.count)
-      }));
-      return {
-        date,
-        count: timeSeries[timeSeries.length - 1].count,
-        timeSeries,
-        predictedValues: calculatePredictedValues(timeSeries, 'count')
-      };
-    },
-  },
-  {
-    type: 'CURRENT_ACTIVE_USERS',
-    query: `
-      WITH time_slots AS (
-        SELECT 
-          datetime(createdAt, 'start of minute') as timeSlot
-        FROM raw_analytic
-        WHERE 
-          type = ? 
-          AND createdAt >= ? 
-          AND createdAt < ?
-        GROUP BY datetime(createdAt, 'start of minute')
-      ),
-      session_counts AS (
-        SELECT 
-          datetime(createdAt, 'start of minute') as timeSlot,
-          COUNT(DISTINCT sessionId) as activeUsers,
-          GROUP_CONCAT(DISTINCT json_object(
-            'country', country,
-            'count', COUNT(DISTINCT sessionId),
-            'devices', json_object(json_extract(data, '$.deviceType'), COUNT(DISTINCT sessionId))
-          )) as countryData
-        FROM raw_analytic
-        LEFT JOIN ip2location ON 
-          (CAST(substr(ipAddress, 1, instr(ipAddress, '.')-1) AS INTEGER) * 16777216 +
-           CAST(substr(substr(ipAddress, instr(ipAddress, '.')+1), 1, instr(substr(ipAddress, instr(ipAddress, '.')+1), '.')-1) AS INTEGER) * 65536 +
-           CAST(substr(substr(ipAddress, instr(ipAddress, '.', instr(ipAddress, '.')+1)+1), 1, instr(substr(ipAddress, instr(ipAddress, '.', instr(ipAddress, '.')+1)+1), '.')-1) AS INTEGER) * 256 +
-           CAST(substr(ipAddress, instr(ipAddress, '.', instr(ipAddress, '.', instr(ipAddress, '.')+1)+1)+1) AS INTEGER)) 
-          BETWEEN ipFrom AND ipTo
-        WHERE 
-          type = ? 
-          AND createdAt >= ? 
-          AND createdAt < ?
-        GROUP BY datetime(createdAt, 'start of minute'), country
-      )
-      SELECT 
-        time_slots.timeSlot,
-        COALESCE(session_counts.activeUsers, 0) as activeUsers,
-        COALESCE(session_counts.countryData, '[]') as countryData
-      FROM time_slots
-      LEFT JOIN session_counts ON time_slots.timeSlot = session_counts.timeSlot
-      ORDER BY time_slots.timeSlot
-    `,
-    params: { type: AnalyticType.PAGE_VIEW },
-    processResult: (result, date) => {
-      const timeSeries = result.map((row: any) => ({
-        time: row.timeSlot,
-        activeUsers: row.activeUsers,
-        countryData: JSON.parse(`[${row.countryData}]`)
-      }));
-      return {
-        date,
-        timeSeries,
-        predictedValues: calculatePredictedValues(timeSeries, 'activeUsers')
-      };
-    },
-  },
-  {
-    type: 'AVERAGE_LOADING_TIMES',
-    query: `
-      SELECT 
-        DATE_TRUNC('hour', createdAt) as timeSlot,
-        AVG(CAST(data->>'pageLoadTime' AS FLOAT)) as avgLoadTime
-      FROM raw_analytic
-      WHERE 
-        type = :type 
-        AND createdAt >= :start 
-        AND createdAt < :end
-      GROUP BY timeSlot
-      ORDER BY timeSlot
-    `,
-    params: { type: AnalyticType.PAGE_LOAD },
-    processResult: (result, date) => {
-      const timeSeries = result.map((row: any) => ({
-        time: row.timeSlot,
-        avgLoadTime: parseFloat(row.avgLoadTime)
-      }));
-      return {
-        date,
-        timeSeries,
-        predictedValues: calculatePredictedValues(timeSeries, 'avgLoadTime')
-      };
-    },
-  },
-  {
-    type: 'ERROR_COUNT',
-    query: `
-      SELECT 
-        DATE_TRUNC('hour', createdAt) as timeSlot,
-        data->>'errorMessage' as errorMessage,
-        COUNT(*) as errorCount
-      FROM raw_analytic
-      WHERE 
-        type = :type 
-        AND createdAt >= :start 
-        AND createdAt < :end
-      GROUP BY timeSlot, errorMessage
-      ORDER BY timeSlot, errorCount DESC
-    `,
-    params: { type: AnalyticType.ERROR },
-    processResult: (result, date) => {
-      const timeSeries = result.reduce((acc: Record<string, any>, row: ErrorCountRow) => {
-        const timeSlot = row.timeSlot;
-        if (!acc[timeSlot]) {
-          acc[timeSlot] = {
-            time: timeSlot,
-            totalErrors: 0,
-            errorGroups: []
-          };
-        }
-        acc[timeSlot].totalErrors += parseInt(row.errorCount);
-        acc[timeSlot].errorGroups.push({
-          message: row.errorMessage,
-          count: parseInt(row.errorCount)
-        });
-        return acc;
-      }, {});
-      const timeSeriesArray = Object.values(timeSeries);
-      return {
-        date,
-        timeSeries: timeSeriesArray,
-        predictedValues: calculatePredictedValues(timeSeriesArray, 'totalErrors')
-      };
-    },
-  },
-  {
-    type: 'BOUNCE_RATE',
-    query: `
-      WITH session_data AS (
-        SELECT 
-          sessionId,
-          COUNT(*) as pageviews,
-          MAX(CASE WHEN type = :conversionType THEN 1 ELSE 0 END) as has_conversion
-        FROM raw_analytic
-        WHERE createdAt >= :start AND createdAt < :end
-        GROUP BY sessionId
-      )
-      SELECT 
-        COUNT(CASE WHEN pageviews = 1 AND has_conversion = 0 THEN 1 END) * 100.0 / COUNT(*) as bounce_rate
-      FROM session_data
-    `,
-    params: { conversionType: AnalyticType.CONVERSION },
-    processResult: (result, date) => ({
-      date,
-      bounceRate: parseFloat(result[0].bounce_rate).toFixed(2)
-    }),
-  },
-  {
-    type: 'USER_RETENTION',
-    query: `
-      WITH user_sessions AS (
-        SELECT 
-          ipAddress,
-          MIN(DATE(createdAt)) as first_visit,
-          MAX(DATE(createdAt)) as last_visit
-        FROM raw_analytic
-        WHERE createdAt >= :start AND createdAt < :end
-        GROUP BY ipAddress
-      )
-      SELECT 
-        DATEDIFF(last_visit, first_visit) as days_since_first_visit,
-        COUNT(*) as user_count
-      FROM user_sessions
-      GROUP BY days_since_first_visit
-      ORDER BY days_since_first_visit
-    `,
-    params: {},
-    processResult: (result, date) => ({
-      date,
-      retentionData: result.map((row: any) => ({
-        daysSinceFirstVisit: row.days_since_first_visit,
-        userCount: parseInt(row.user_count)
-      }))
-    }),
-  },
-  {
-    type: 'CONVERSION_FUNNEL',
-    query: `
-      WITH funnel_steps AS (
-        SELECT
-          sessionId,
-          MAX(CASE WHEN type = :pageViewType THEN 1 ELSE 0 END) as reached_step1,
-          MAX(CASE WHEN type = :formSubmissionType THEN 1 ELSE 0 END) as reached_step2,
-          MAX(CASE WHEN type = :conversionType THEN 1 ELSE 0 END) as reached_step3
-        FROM raw_analytic
-        WHERE createdAt >= :start AND createdAt < :end
-        GROUP BY sessionId
-      )
-      SELECT
-        SUM(reached_step1) as step1_count,
-        SUM(reached_step2) as step2_count,
-        SUM(reached_step3) as step3_count
-      FROM funnel_steps
-    `,
-    params: { 
-      pageViewType: AnalyticType.PAGE_VIEW,
-      formSubmissionType: AnalyticType.FORM_SUBMISSION,
-      conversionType: AnalyticType.CONVERSION
-    },
-    processResult: (result, date) => ({
-      date,
-      funnelSteps: [
-        { name: 'Page View', count: parseInt(result[0].step1_count) },
-        { name: 'Form Submission', count: parseInt(result[0].step2_count) },
-        { name: 'Conversion', count: parseInt(result[0].step3_count) }
-      ]
-    }),
-  },
-  {
-    type: 'PAGE_PERFORMANCE',
-    query: `
-      SELECT 
-        data->>'pathname' as pathname,
-        AVG(CAST(data->>'pageLoadTime' AS FLOAT)) as avg_load_time,
-        COUNT(*) as view_count
-      FROM raw_analytic
-      WHERE 
-        type = :pageLoadType 
-        AND createdAt >= :start 
-        AND createdAt < :end
-      GROUP BY data->>'pathname'
-      ORDER BY view_count DESC
-      LIMIT 10
-    `,
-    params: { pageLoadType: AnalyticType.PAGE_LOAD },
-    processResult: (result, date) => ({
-      date,
-      pagePerformance: result.map((row: any) => ({
-        pathname: row.pathname,
-        avgLoadTime: parseFloat(row.avg_load_time).toFixed(2),
-        viewCount: parseInt(row.view_count)
-      }))
-    }),
-  },
-  {
-    type: 'USER_FLOW',
-    query: `
-      WITH ordered_pages AS (
-        SELECT 
-          sessionId,
-          data->>'pathname' as pathname,
-          ROW_NUMBER() OVER (PARTITION BY sessionId ORDER BY createdAt) as page_order
-        FROM raw_analytic
-        WHERE 
-          type = :pageViewType
-          AND createdAt >= :start 
-          AND createdAt < :end
-      )
-      SELECT 
-        p1.pathname as from_page,
-        p2.pathname as to_page,
-        COUNT(*) as transition_count
-      FROM ordered_pages p1
-      JOIN ordered_pages p2 ON p1.sessionId = p2.sessionId AND p1.page_order = p2.page_order - 1
-      GROUP BY p1.pathname, p2.pathname
-      ORDER BY transition_count DESC
-      LIMIT 20
-    `,
-    params: { pageViewType: AnalyticType.PAGE_VIEW },
-    processResult: (result, date) => ({
-      date,
-      userFlows: result.map((row: any) => ({
-        fromPage: row.from_page,
-        toPage: row.to_page,
-        transitionCount: parseInt(row.transition_count)
-      }))
-    }),
-  },
-  {
-    type: 'CHANNEL_PERFORMANCE',
-    query: `
-      SELECT 
-        data->>'channel' as channel,
-        COUNT(DISTINCT sessionId) as sessions,
-        COUNT(DISTINCT ipAddress) as unique_visitors,
-        COUNT(*) as total_events,
-        SUM(CASE WHEN type = :conversionType THEN 1 ELSE 0 END) as conversions
-      FROM raw_analytic
-      WHERE createdAt >= :start AND createdAt < :end
-      GROUP BY data->>'channel'
-      ORDER BY sessions DESC
-    `,
-    params: { conversionType: AnalyticType.CONVERSION },
-    processResult: (result, date) => ({
-      date,
-      channelPerformance: result.map((row: any) => ({
-        channel: row.channel,
-        sessions: parseInt(row.sessions),
-        uniqueVisitors: parseInt(row.unique_visitors),
-        totalEvents: parseInt(row.total_events),
-        conversions: parseInt(row.conversions),
-        conversionRate: (parseInt(row.conversions) / parseInt(row.sessions) * 100).toFixed(2)
-      }))
-    }),
-  },
-  {
-    type: 'CHANNEL_ATTRIBUTION',
-    query: `
-      WITH first_touch AS (
-        SELECT 
-          sessionId,
-          FIRST_VALUE(data->>'channel') OVER (PARTITION BY sessionId ORDER BY createdAt) as first_channel
-        FROM raw_analytic
-        WHERE createdAt >= :start AND createdAt < :end
-      ),
-      last_touch AS (
-        SELECT 
-          sessionId,
-          LAST_VALUE(data->>'channel') OVER (PARTITION BY sessionId ORDER BY createdAt ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) as last_channel
-        FROM raw_analytic
-        WHERE createdAt >= :start AND createdAt < :end
-      ),
-      conversions AS (
-        SELECT DISTINCT sessionId
-        FROM raw_analytic
-        WHERE type = :conversionType AND createdAt >= :start AND createdAt < :end
-      )
-      SELECT 
-        COALESCE(ft.first_channel, lt.last_channel) as channel,
-        COUNT(DISTINCT CASE WHEN ft.first_channel IS NOT NULL THEN c.sessionId END) as first_touch_conversions,
-        COUNT(DISTINCT CASE WHEN lt.last_channel IS NOT NULL THEN c.sessionId END) as last_touch_conversions
-      FROM conversions c
-      LEFT JOIN first_touch ft ON c.sessionId = ft.sessionId
-      LEFT JOIN last_touch lt ON c.sessionId = lt.sessionId
-      GROUP BY COALESCE(ft.first_channel, lt.last_channel)
-    `,
-    params: { conversionType: AnalyticType.CONVERSION },
-    processResult: (result, date) => ({
-      date,
-      channelAttribution: result.map((row: any) => ({
-        channel: row.channel,
-        firstTouchConversions: parseInt(row.first_touch_conversions),
-        lastTouchConversions: parseInt(row.last_touch_conversions)
-      }))
-    }),
-  },
-  {
-    type: 'UTM_CAMPAIGN_PERFORMANCE',
-    query: `
-      SELECT 
-        data->>'utm_source' as utm_source,
-        data->>'utm_medium' as utm_medium,
-        data->>'utm_campaign' as utm_campaign,
-        COUNT(DISTINCT sessionId) as sessions,
-        COUNT(DISTINCT ipAddress) as unique_visitors,
-        SUM(CASE WHEN type = :conversionType THEN 1 ELSE 0 END) as conversions
-      FROM raw_analytic
-      WHERE 
-        createdAt >= :start AND createdAt < :end
-        AND data->>'utm_source' IS NOT NULL
-      GROUP BY data->>'utm_source', data->>'utm_medium', data->>'utm_campaign'
-      ORDER BY sessions DESC
-    `,
-    params: { conversionType: AnalyticType.CONVERSION },
-    processResult: (result, date) => ({
-      date,
-      utmCampaignPerformance: result.map((row: any) => ({
-        utmSource: row.utm_source,
-        utmMedium: row.utm_medium,
-        utmCampaign: row.utm_campaign,
-        sessions: parseInt(row.sessions),
-        uniqueVisitors: parseInt(row.unique_visitors),
-        conversions: parseInt(row.conversions),
-        conversionRate: (parseInt(row.conversions) / parseInt(row.sessions) * 100).toFixed(2)
-      }))
-    }),
-  },
-  {
-    type: 'CHANNEL_ENGAGEMENT',
-    query: `
-      SELECT 
-        data->>'channel' as channel,
-        AVG(EXTRACT(EPOCH FROM (MAX(createdAt) - MIN(createdAt)))) as avg_session_duration,
-        AVG(page_views) as avg_page_views
-      FROM (
-        SELECT 
-          sessionId,
-          data->>'channel' as channel,
-          COUNT(*) as page_views
-        FROM raw_analytic
-        WHERE 
-          type = :pageViewType
-          AND createdAt >= :start AND createdAt < :end
-        GROUP BY sessionId, data->>'channel'
-      ) session_data
-      JOIN raw_analytic USING (sessionId)
-      GROUP BY data->>'channel'
-    `,
-    params: { pageViewType: AnalyticType.PAGE_VIEW },
-    processResult: (result, date) => ({
-      date,
-      channelEngagement: result.map((row: any) => ({
-        channel: row.channel,
-        avgSessionDuration: parseFloat(row.avg_session_duration).toFixed(2),
-        avgPageViews: parseFloat(row.avg_page_views).toFixed(2)
-      }))
-    }),
-  },
-  {
-    type: 'NEW_VS_RETURNING_BY_CHANNEL',
-    query: `
-      WITH user_visits AS (
-        SELECT 
-          ipAddress,
-          data->>'channel' as channel,
-          MIN(createdAt) as first_visit
-        FROM raw_analytic
-        GROUP BY ipAddress, data->>'channel'
-      )
-      SELECT 
-        channel,
-        SUM(CASE WHEN first_visit >= :start THEN 1 ELSE 0 END) as new_visitors,
-        SUM(CASE WHEN first_visit < :start THEN 1 ELSE 0 END) as returning_visitors
-      FROM user_visits
-      WHERE first_visit < :end
-      GROUP BY channel
-    `,
-    params: {},
-    processResult: (result, date) => ({
-      date,
-      newVsReturning: result.map((row: any) => ({
-        channel: row.channel,
-        newVisitors: parseInt(row.new_visitors),
-        returningVisitors: parseInt(row.returning_visitors)
-      }))
-    }),
-  },
-  {
-    type: 'DEVICE_CROSS_USAGE',
-    query: `
-      WITH user_devices AS (
-        SELECT 
-          ipAddress,
-          data->>'deviceType' as device_type
-        FROM raw_analytic
-        WHERE createdAt >= :start AND createdAt < :end
-        GROUP BY ipAddress, data->>'deviceType'
-      )
-      SELECT 
-        STRING_AGG(device_type, ', ' ORDER BY device_type) as device_combination,
-        COUNT(DISTINCT ipAddress) as user_count
-      FROM user_devices
-      GROUP BY ipAddress
-      HAVING COUNT(DISTINCT device_type) > 1
-      GROUP BY device_combination
-      ORDER BY user_count DESC
-    `,
-    params: {},
-    processResult: (result, date) => ({
-      date,
-      deviceCrossUsage: result.map((row: any) => ({
-        deviceCombination: row.device_combination,
-        userCount: parseInt(row.user_count)
-      }))
-    }),
-  },
-  {
-    type: 'AVERAGE_SESSION_DURATION',
-    query: `
-      WITH session_times AS (
-        SELECT 
-          sessionId,
-          MIN(createdAt) as start_time,
-          MAX(createdAt) as end_time
-        FROM raw_analytic
-        WHERE 
-          sessionId IS NOT NULL
-          AND createdAt >= :start 
-          AND createdAt < :end
-        GROUP BY sessionId
-      )
-      SELECT 
-        DATE_TRUNC('hour', start_time) as timeSlot,
-        AVG(EXTRACT(EPOCH FROM (end_time - start_time))) as avgDuration
-      FROM session_times
-      GROUP BY timeSlot
-      ORDER BY timeSlot
-    `,
-    params: {},
-    processResult: (result, date) => ({
-      date,
-      timeSeries: result.map((row: any) => ({
-        time: row.timeSlot,
-        avgDuration: parseFloat(row.avgDuration)
-      }))
-    }),
-  }
-];
+
 
 const aggregateDailyAnalytics = async (date: moment.Moment) => {
   await runWithLock('DAILY_AGGREGATION', 60 * 60 * 1000, async (queryRunner) => {
     const { start, end } = getDateRange(date);
 
     const aggregationQuery = `
-      SELECT
-        COUNT(*) as totalVisits,
-        COUNT(DISTINCT ipAddress) as uniqueVisitors,
-        AVG(pageLoadTime) as averagePageLoadTime,
-        JSON_OBJECT_AGG(browserName, browserCount) as topBrowsers,
-        JSON_OBJECT_AGG(referrer, referrerCount) as topReferrers,
-        JSON_OBJECT_AGG(osName, osCount) as topOperatingSystems,
-        JSON_OBJECT_AGG(language, languageCount) as topLanguages,
-        JSON_OBJECT_AGG(deviceType, deviceTypeCount) as deviceTypes
-      FROM raw_analytic
-      LEFT JOIN (
-        SELECT browserName, COUNT(*) as browserCount
+  SELECT
+    -- Basic visitor stats
+    COUNT(*) as totalVisits,
+    COUNT(DISTINCT ipAddress) as uniqueVisitors,
+    COUNT(DISTINCT sessionId) as uniqueSessions,
+    AVG(CAST(json_extract(data, '$.pageLoadTime') AS FLOAT)) as averagePageLoadTime,
+    
+    -- Browser, OS, Device stats
+    json_group_object(browserName, browserCount) as topBrowsers,
+    json_group_object(osName, osCount) as topOperatingSystems,
+    json_group_object(deviceType, deviceTypeCount) as deviceTypes,
+    
+    -- Traffic source stats
+    json_group_object(referrer, referrerCount) as topReferrers,
+    json_group_object(language, languageCount) as topLanguages,
+    
+    -- Page performance stats
+    (
+        SELECT json_group_array(
+            json_object(
+                'path', path,
+                'pageViews', pageViews,
+                'uniquePageViews', uniquePageViews,
+                'avgLoadTime', avgLoadTime,
+                'avgTimeOnPage', avgTimeOnPage
+            )
+        )
+        FROM page_stats
+    ) as topPages,
+    
+    -- Event stats
+    (
+        SELECT json_group_array(
+            json_object(
+                'type', type,
+                'eventCount', eventCount,
+                'uniqueUsers', uniqueUsers
+            )
+        )
+        FROM event_stats
+    ) as eventBreakdown,
+    
+    -- Form stats
+    (
+        SELECT json_group_array(
+            json_object(
+                'formId', formId,
+                'submissions', submissions,
+                'uniqueSubmissions', uniqueSubmissions
+            )
+        )
+        FROM form_stats
+    ) as formStats,
+    
+    -- Error stats
+    (
+        SELECT json_group_array(
+            json_object(
+                'errorType', errorType,
+                'errorMessage', errorMessage,
+                'count', errorCount
+            )
+        )
+        FROM error_stats
+    ) as topErrors,
+    
+    -- Conversion stats
+    (
+        SELECT json_group_array(
+            json_object(
+                'conversionType', conversionType,
+                'conversionCount', conversionCount,
+                'uniqueConversions', uniqueConversions
+            )
+        )
+        FROM conversion_stats
+    ) as conversionStats,
+    
+    -- Engagement metrics
+    (
+        SELECT COUNT(*)
         FROM raw_analytic
-        WHERE createdAt >= :start AND createdAt < :end
-        GROUP BY browserName
-        ORDER BY browserCount DESC
-        LIMIT 5
-      ) browsers ON raw_analytic.browserName = browsers.browserName
-      LEFT JOIN (
-        SELECT COALESCE(referrer, 'Direct') as referrer, COUNT(*) as referrerCount
+        WHERE 
+            createdAt >= :start 
+            AND createdAt < :end
+            AND type = 2  -- CLICK
+    ) as totalClicks,
+    
+    (
+        SELECT COUNT(*)
         FROM raw_analytic
-        WHERE createdAt >= :start AND createdAt < :end
-        GROUP BY referrer
-        ORDER BY referrerCount DESC
-        LIMIT 5
-      ) referrers ON COALESCE(raw_analytic.referrer, 'Direct') = referrers.referrer
-      -- Add similar subqueries for osName, language, and deviceType
-      WHERE createdAt >= :start AND createdAt < :end
+        WHERE 
+            createdAt >= :start 
+            AND createdAt < :end
+            AND type = 3  -- SCROLL
+    ) as totalScrolls,
+    
+    (
+        SELECT AVG(CAST(json_extract(data, '$.scrollDepth') AS FLOAT))
+        FROM raw_analytic
+        WHERE 
+            createdAt >= :start 
+            AND createdAt < :end
+            AND type = 3  -- SCROLL
+    ) as averageScrollDepth
+
+FROM raw_analytic
+CROSS JOIN browser_stats
+CROSS JOIN referrer_stats
+CROSS JOIN os_stats
+CROSS JOIN language_stats
+CROSS JOIN device_stats
+WHERE 
+    createdAt >= :start 
+    AND createdAt < :end;
     `;
 
     const result = await queryRunner.manager.query(
@@ -766,7 +323,7 @@ const processMissingDays = async (job: AnalyticJob | typeof aggregateDailyAnalyt
     const lastProcessedDate = jobStatus ? moment(jobStatus.lastProcessedDate) : moment().subtract(30, 'days');
     const today = moment().startOf('day');
 
-    let currentDate = lastProcessedDate.clone().add(1, 'day');
+    const currentDate = lastProcessedDate.clone().add(1, 'day');
 
     while (currentDate.isSameOrBefore(today)) {
       if (typeof job === 'function') {
@@ -790,13 +347,29 @@ const runRealTimeAnalytics = async () => {
   }
 };
 
-const setupJobs = () => {
-  analyticJobs.forEach((job, index) => {
-    cron.schedule(`${5 + index * 5} 0 * * *`, async () => {
+const scheduleAnalyticJobs = (jobs: AnalyticJob[]) => {
+  // Distribute jobs across hours to handle any number of jobs
+  jobs.forEach((job: AnalyticJob, index: number) => {
+    // Calculate hour and minute to avoid exceeding 59 minutes
+    const jobsPerHour = 11; // (59-5)/5 = 10.8, so 11 jobs max per hour
+    const hour = Math.floor(index / jobsPerHour);
+    const baseMinute = (index % jobsPerHour) * 5 + 5;
+    
+    // Format hour to ensure it stays within 0-23
+    const scheduledHour = hour % 24;
+    
+    // Schedule job with calculated time
+    cron.schedule(`${baseMinute} ${scheduledHour} * * *`, async () => {
       await processMissingDays(job);
       await runAnalyticJob(job, moment().subtract(1, 'day'));
     });
+    
+    console.log(`Scheduled job ${index} to run at ${scheduledHour}:${baseMinute.toString().padStart(2, '0')}`);
   });
+};
+
+const setupJobs = () => {
+  scheduleAnalyticJobs(analyticJobs);
 
   cron.schedule('0 1 * * *', async () => {
     await processMissingDays(aggregateDailyAnalytics);
@@ -804,7 +377,6 @@ const setupJobs = () => {
   });
 
   cron.schedule('0 2 1 * *', deleteOldRawData);
-
   cron.schedule('*/5 * * * *', runRealTimeAnalytics);
 };
 

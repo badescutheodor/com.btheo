@@ -1,7 +1,7 @@
 import { createServer } from 'http'
 import { parse } from 'url'
 import next from 'next'
-import { initializeAnalytics } from './src/lib/jobs'
+import { initializeAnalytics } from './src/lib/jobs/analytics'
 
 const dev = process.env.NODE_ENV !== 'production'
 const app = next({ dev })
